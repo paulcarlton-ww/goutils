@@ -82,11 +82,10 @@ ${LINT_ARTIFACT}: ${MAKEFILE_PATH}/golangci-lint.yml ${GO_SOURCES}
 		 sysctl -n hw.ncpu || \
 		 echo 1) 2>/dev/null) '*' 2 '-' 1) && \
 	GOPROXY=https://proxy.golang.org,direct \
-	echo "$(CURDIR) golangci-lint run --config ${MAKEFILE_PATH}/golangci-lint.yml --concurrency=$${procs} ."
 	 golangci-lint run \
 		--config ${MAKEFILE_PATH}/golangci-lint.yml \
 		--concurrency=$${procs} \
 		*.go) && \
-	touch $@ \
+	touch $@ && \
 	cd ${MAKEFILE_PATH}
 
