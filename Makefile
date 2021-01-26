@@ -57,27 +57,12 @@ clean-${BUILD_DIR}:
 ${BUILD_DIR}:
 	mkdir -p $@
 
-clean-gomod:
-	rm -rf ${GOMOD_ARTIFACT}
-
-go.mod:
-	go mod tidy
-
-gomod: go.sum
-go.sum:  ${GOMOD_ARTIFACT}
-%._gomod: go.mod
-	touch  ${GOMOD_ARTIFACT}
-
-${GOMOD_ARTIFACT}: gomod-update
-gomod-update: go.mod ${PROJECT_SOURCES}
-	go build ./...
-
 clean-${PROJECT}-check:
 	$(foreach target,${GO_CHECK_PACKAGES},
 		$(MAKE) -C ${target} --makefile=${CURDIR}/makefile.mk clean;)
 
 ${PROJECT}-check: ${GO_CHECK_PACKAGES}
-${GO_CHECK_PACKAGES}: go.sum
+${GO_CHECK_PACKAGES}: 
 	$(MAKE) -C $@ --makefile=${CURDIR}/makefile.mk
 
 # Generate code

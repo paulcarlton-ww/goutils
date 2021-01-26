@@ -76,15 +76,17 @@ clean-lint:
 lint: ${LINT_ARTIFACT}
 ${LINT_ARTIFACT}: ${MAKEFILE_PATH}/golangci-lint.yml ${GO_SOURCES}
 	echo "${YELLOW}Running go lint${NC_DIR}" && \
-	(cd ${MAKEFILE_PATH} && \
+	(cd $(CURDIR) && \
 	 procs=$$(expr $$( \
 		(grep -c ^processor /proc/cpuinfo || \
 		 sysctl -n hw.ncpu || \
 		 echo 1) 2>/dev/null) '*' 2 '-' 1) && \
 	GOPROXY=https://proxy.golang.org,direct \
+	echo "$(CURDIR) golangci-lint run --config ${MAKEFILE_PATH}/golangci-lint.yml --concurrency=$${procs} ."
 	 golangci-lint run \
 		--config ${MAKEFILE_PATH}/golangci-lint.yml \
 		--concurrency=$${procs} \
-		"$$(realpath --relative-to ${MAKEFILE_PATH} ${CURDIR})/.") && \
-	touch $@
+		*.go) && \
+	touch $@ \
+	cd ${MAKEFILE_PATH}
 
