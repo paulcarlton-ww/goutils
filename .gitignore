@@ -1,0 +1,9 @@
+.idea/
+build/
+cache/
+pkg/**/._gometalinter
+pkg/**/coverage/
+pkg/**/*.md
+vendor/
+**/._shellcheck
+*.code-workspace
