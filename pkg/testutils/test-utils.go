@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -180,4 +181,22 @@ func GetTestJSON(t *testing.T, data interface{}) string {
 	}
 
 	return jsonResp
+}
+
+// CallMethod calls a method on an object and returns the results.
+func CallMethod(obj interface{}, methodName string, params []interface{}) (results []interface{}, err error) {
+	method := reflect.ValueOf(obj).MethodByName(methodName)
+	p := []reflect.Value{}
+
+	for _, param := range params {
+		p = append(p, reflect.ValueOf(param))
+	}
+
+	values := method.Call(p)
+
+	for _, result := range values {
+		results = append(results, result.Interface())
+	}
+
+	return results, nil
 }
