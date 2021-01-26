@@ -92,7 +92,7 @@ clean-check:
 
 check: DOCKER_SOURCES=Dockerfile ${MAKE_SOURCES} ${PROJECT_SOURCES}
 check: DOCKER_BUILD_OPTIONS=--target builder --no-cache
-check: IMG=${PROJECT}-check:${VERSION}
+check: IMG=${PROJECT}-check:latest
 check: ${BUILD_DIR} ${CHECK_ARTIFACT}
 
 %-docker.tar: $${DOCKER_SOURCES}

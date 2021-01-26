@@ -42,12 +42,12 @@ type (
 var (
 	// Prep is the default pre test function.
 	Prep = DefaultPrep // nolint:gochecknoglobals // ok
-	// Check is the default  post test result check
+	// Check is the default  post test result check.
 	Check = DefaultCheck // nolint:gochecknoglobals // ok
 	// Report is the default post test results reporter.
 	Report = DefaultReport // nolint:gochecknoglobals // ok
 	// NilValue the text used in place of a nil value in test report.
-	// The user can change this value if needed
+	// The user can change this value if needed.
 	NilValue = "testutils.ToString returned nil value" // nolint:gochecknoglobals // ok
 )
 
@@ -104,6 +104,7 @@ func DefaultCheck(t *testing.T, actual interface{}, test *DefTest) bool {
 func SetEnv(t *testing.T, envName, envValue string) bool {
 	if err := os.Setenv(envName, envValue); err != nil {
 		t.Errorf("failed to set environmental variable: %s to %s, %s", envName, envValue, err)
+
 		return false
 	}
 

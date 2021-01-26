@@ -4,6 +4,7 @@ ARG VERSION
 WORKDIR /go/src/github.com/paulcarlton-ww/testutils
 COPY . .
 #ENV GOPROXY=direct
+RUN bin/setup.sh
 RUN make
 
 ENV TAG=$TAG \

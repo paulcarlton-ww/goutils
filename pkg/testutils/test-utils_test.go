@@ -68,7 +68,7 @@ func TestDisplayStrings(t *testing.T) {
 	}
 }
 
-func TestCompareWhereList(t *testing.T) {
+func TestCompareWhereList(t *testing.T) { // nolint: funlen // ok
 	tests := []struct {
 		testNum  int
 		one      []string
@@ -167,7 +167,7 @@ func TestCompareWhere(t *testing.T) {
 	}
 }
 
-func TestCompareItems(t *testing.T) {
+func TestCompareItems(t *testing.T) { // nolint: funlen // ok
 	type TestInfo struct {
 		testNum  int
 		one      interface{}
@@ -196,9 +196,9 @@ func TestCompareItems(t *testing.T) {
 	tests := []TestInfo{
 		{testNum: 1, one: 1, two: 2, expected: false},
 		{testNum: 2, one: 1, two: 1, expected: true},
-		{
+		{ // nolint: dupl // ok
 			testNum: 5, one: testData{
-				B: true, I: 1, F: 12.43, // nolint:dupl // False positive
+				B: true, I: 1, F: 12.43,
 				X:       subData{S: "interface"},
 				E:       subData{S: "sub struct", A: []int{1, 2, 3}},
 				subData: subData{S: "embedded", A: []int{9, 8, 7}},
@@ -210,9 +210,9 @@ func TestCompareItems(t *testing.T) {
 				subData: subData{S: "embedded", A: []int{9, 11, 7}},
 			}, expected: false,
 		},
-		{
+		{ // nolint: dupl // ok
 			testNum: 6, one: testData{
-				B: true, I: 1, F: 12.43, // nolint:dupl // False positive
+				B: true, I: 1, F: 12.43,
 				X:       subData{S: "interface"},
 				E:       subData{S: "sub struct", A: []int{1, 2, 3}},
 				subData: subData{S: "embedded", A: []int{9, 8, 7}},
