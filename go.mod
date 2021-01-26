@@ -1,4 +1,4 @@
-module github.com/paulcarlton-ww/testutils/pkg/testutils
+module github.com/paulcarlton-ww/testutils
 
 go 1.14
 
