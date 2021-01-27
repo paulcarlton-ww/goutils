@@ -27,8 +27,6 @@ CHECK_ARTIFACT:=${BUILD_DIR}${PROJECT}-check-${VERSION}-docker.tar
 BUILD_ARTIFACT:=${BUILD_DIR}${PROJECT}-build-${VERSION}-docker.tar
 DEV_BUILD_ARTIFACT:=${BUILD_DIR}${PROJECT}-dev-build-${VERSION}-docker.tar
 
-GOMOD_CACHE_ARTIFACT:=${GOMOD_CACHE_DIR}._gomod
-GOMOD_ARTIFACT:=_gomod
 GO_BIN_ARTIFACT:=${GOBIN}/${PROJECT}
 
 YELLOW:=\033[0;33m
@@ -63,6 +61,18 @@ clean-${PROJECT}-check:
 ${PROJECT}-check: ${GO_CHECK_PACKAGES}
 ${GO_CHECK_PACKAGES}: 
 	$(MAKE) -C $@ --makefile=${CURDIR}/makefile.mk
+
+clean-gomod:
+	$(foreach target,${GO_CHECK_PACKAGES},
+		$(MAKE) -C ${target} --makefile=${CURDIR}/makefile.mk clean-gomod;)
+
+gomod-update:
+	$(foreach target,${GO_CHECK_PACKAGES},
+		$(MAKE) -C ${target} --makefile=${CURDIR}/makefile.mk gomod-update;)
+
+gomod:
+	$(foreach target,${GO_CHECK_PACKAGES},
+		$(MAKE) -C ${target} --makefile=${CURDIR}/makefile.mk gomod;)
 
 # Generate code
 go-generate: ${PROJECT_SOURCES}

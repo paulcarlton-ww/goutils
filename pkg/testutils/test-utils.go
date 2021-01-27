@@ -17,18 +17,7 @@ import (
 // Set to true to test failure output.
 var FailTests = false // nolint:gochecknoglobals // ok
 
-// FieldInfo holds information about a field of a struct
-type FieldInfo struct {
-	GetterMethod string  `json:"getter,omitempty"` // The method to get the value, nil if no getter method
-	SetterMethod string  `json:"setter,omitempty"` // The method to get the value, nil if no setter method
-	FieldName    string  `json:"name"` // The name of the field, required value
-	kind         reflect.Kind `json:"type,omitempty` // The type of the field, defaults to string
-}
-
-func fakeLogger() logr.Logger {
-	return testlogr.NullLogger{}
-}
-
+/*
 func getBoolField(t *testing.T, obj interface{}, field string) bool {
 	value, err := config.GetField(obj, field)
 	if err != nil {
@@ -158,7 +147,16 @@ func getTypeString(t *testing.T, v TypeValue) string { // nolint:deadcode,unused
 		return ""
 	}
 }
+*/
+// CheckField will check if a field value is equal to the expected value and set the test to failed if not.
+func CheckField(t *testing.T, obj interface{}, getFieldFunc GetFieldFunc, k string, v interface{}) {
+	actual := getFieldFunc(t, obj, k)
+	if actual != v {
+		t.Fatalf("Field: %s, actual: %s, expected: %s", k, actual, v)
+	}
+}
 
+/*
 func CheckField(t *testing.T, getFieldFunc GetFieldFunc, k string, v interface{}) bool {
 	switch v.(type) {
 	case string:
@@ -177,7 +175,7 @@ func CheckField(t *testing.T, getFieldFunc GetFieldFunc, k string, v interface{}
 				return false
 			}
 		}
-	case reflect.:
+	case time.Duration:
 		{
 			actual := getDurationField(t, obj, k)
 			if actual != v.value {
@@ -186,7 +184,7 @@ func CheckField(t *testing.T, getFieldFunc GetFieldFunc, k string, v interface{}
 				return false
 			}
 		}
-	case reflect.Int:
+	case int:
 		{
 			actual := getIntField(t, obj, k)
 			if actual != v.value {
@@ -203,18 +201,20 @@ func CheckField(t *testing.T, getFieldFunc GetFieldFunc, k string, v interface{}
 
 	return true
 }
+*/
 
-func CheckFields(t *testing.T, obj interface{}, fields map[string]interface{}) bool {
+// CheckFields will check a map of field names and expected values are equal to the actual value and set the test to failed if not.
+func CheckFields(t *testing.T, obj interface{}, getFieldFunc GetFieldFunc, fields Fields) {
 	for k, v := range fields {
-		if !CheckField(t, obj, k, v) {
-			return false
+		CheckField(t, obj, getFieldFunc, k, v.FieldValue)
+
+		if t.Failed() {
+			return
 		}
 	}
-
-	return true
 }
 
-// CastToStringList casts an interface to a []string
+// CastToStringList casts an interface to a []string.
 func CastToStringList(t *testing.T, data interface{}) []string {
 	strList, ok := data.([]string)
 	if !ok {
@@ -222,10 +222,11 @@ func CastToStringList(t *testing.T, data interface{}) []string {
 
 		return nil
 	}
-	retrun strList
+
+	return strList
 }
 
-// CastToMapStringString casts an interface to a map[string]string
+// CastToMapStringString casts an interface to a map[string]string.
 func CastToMapStringString(t *testing.T, data interface{}) map[string]string {
 	strMap, ok := data.(map[string]string)
 	if !ok {
@@ -233,13 +234,15 @@ func CastToMapStringString(t *testing.T, data interface{}) map[string]string {
 
 		return nil
 	}
-	retrun strMap
+
+	return strMap
 }
 
-// UnsetEnvs unsets a list of environmental variables
+// UnsetEnvs unsets a list of environmental variables.
 func UnsetEnvs(t *testing.T, names []string) {
 	for _, env := range names {
 		UnsetEnv(t, env)
+
 		if t.Failed() {
 			return
 		}
@@ -266,10 +269,11 @@ func UnsetEnv(t *testing.T, envName string) {
 	}
 }
 
-// SetEnvs sets a number of environmental variables
+// SetEnvs sets a number of environmental variables.
 func SetEnvs(t *testing.T, envSettings map[string]string) {
 	for name, val := range envSettings {
 		SetEnv(t, name, val)
+
 		if t.Failed() {
 			return
 		}

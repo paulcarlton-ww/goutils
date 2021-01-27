@@ -13,6 +13,7 @@ COVERAGE_ARTIFACT:=${COVERAGE_HTML_DIR}/main.html
 LINT_ARTIFACT:=._gometalinter
 TEST_ARTIFACT:=${COVERAGE_DIR}/coverage.out
 BASH_ARTIFACT:=._shellcheck
+GOMOD_ARTIFACT:=_gomod
 
 YELLOW:=\033[0;33m
 GREEN:=\033[0;32m
@@ -21,12 +22,13 @@ NC:=\033[0m
 NC_DIR:=: $(CURDIR)$(NC)
 
 .PHONY: all clean goimports gofumpt gofmt clean-lint lint clean-test test \
+	clean-gomod gomod gomod-update \
 	clean-coverage coverage
 # Stop prints each line of the recipe.
 .SILENT:
 
 all: lint coverage
-clean: clean-lint clean-coverage clean-test
+clean: clean-lint clean-coverage clean-test clean-gomod
 
 
 goimports: ${GO_SOURCES}
@@ -89,3 +91,14 @@ ${LINT_ARTIFACT}: ${MAKEFILE_PATH}/golangci-lint.yml ${GO_SOURCES}
 	touch $@ && \
 	cd ${MAKEFILE_PATH}
 
+go.mod:
+	go mod tidy
+
+gomod: go.sum
+go.sum:  ${GOMOD_ARTIFACT}
+%._gomod: go.mod
+	touch  ${GOMOD_ARTIFACT}
+
+${GOMOD_ARTIFACT}: gomod-update
+gomod-update: go.mod ${PROJECT_SOURCES}
+	go build ./...
