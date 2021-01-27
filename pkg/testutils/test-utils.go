@@ -17,6 +17,265 @@ import (
 // Set to true to test failure output.
 var FailTests = false // nolint:gochecknoglobals // ok
 
+// FieldInfo holds information about a field of a struct
+type FieldInfo struct {
+	GetterMethod string  `json:"getter,omitempty"` // The method to get the value, nil if no getter method
+	SetterMethod string  `json:"setter,omitempty"` // The method to get the value, nil if no setter method
+	FieldName    string  `json:"name"` // The name of the field, required value
+	kind         reflect.Kind `json:"type,omitempty` // The type of the field, defaults to string
+}
+
+func fakeLogger() logr.Logger {
+	return testlogr.NullLogger{}
+}
+
+func getBoolField(t *testing.T, obj interface{}, field string) bool {
+	value, err := config.GetField(obj, field)
+	if err != nil {
+		t.Fatalf("failed to get field '%s' value, %s", field, err)
+
+		return false
+	}
+
+	boolValue, ok := value.(bool)
+	if !ok {
+		t.Fatalf("failed to cast field '%s' value, %s to bool", field, err)
+
+		return false
+	}
+	return boolValue
+}
+
+func getStringField(t *testing.T, obj interface{}, field string) string {
+	value, err := obj.GetField(obj, field)
+	if err != nil {
+		t.Fatalf("failed to get field '%s' value %s", field, err)
+
+		return ""
+	}
+
+	strValue, ok := value.(string)
+	if !ok {
+		t.Fatalf("failed to cast field '%s' value, %s to string", field, err)
+
+		return false
+	}
+	return boolValue
+}
+
+func getIntField(t *testing.T, obj interface{}, field string) int {
+	value, err := config.GetField(obj, field)
+	if err != nil {
+		t.Fatalf("failed to get field value, %s", err)
+
+		return 0
+	}
+
+	return int(value.Int())
+}
+
+func getDurationField(t *testing.T, obj interface{}, field string) time.Duration {
+	value, err := config.GetField(obj, field)
+	if err != nil {
+		t.Fatalf("failed to get field value, %s", err)
+
+		return 0
+	}
+
+	return time.Duration(value.Int())
+}
+
+func getFieldString(t *testing.T, obj interface{}, k string, v TypeValue) string { // nolint:deadcode,unused // ok
+	switch v.name {
+	case stringType:
+		return getStringField(t, obj, k)
+	case boolType:
+		{
+			return fmt.Sprintf("%t", getBoolField(t, obj, k))
+		}
+	case durationType:
+		{
+			return getDurationField(t, obj, k).String()
+		}
+	case intType:
+		{
+			return fmt.Sprintf("%d", getIntField(t, obj, k))
+		}
+	default:
+		t.Fatalf("Invalid field: %s", k)
+
+		return ""
+	}
+}
+
+func getTypeString(t *testing.T, v TypeValue) string { // nolint:deadcode,unused // ok
+	switch v.name {
+	case stringType:
+		str, ok := v.value.(string)
+		if !ok {
+			t.Fatalf("failed to cast value to string: %s", v)
+
+			return ""
+		}
+
+		return str
+	case boolType:
+		{
+			val, ok := v.value.(bool)
+			if !ok {
+				t.Fatalf("failed to cast value to bool: %s", v)
+
+				return ""
+			}
+
+			return fmt.Sprintf("%t", val)
+		}
+	case durationType:
+		{
+			val, ok := v.value.(time.Duration)
+			if !ok {
+				t.Fatalf("failed to cast value to duration: %s", v)
+
+				return ""
+			}
+
+			return val.String()
+		}
+	case intType:
+		{
+			val, ok := v.value.(int)
+			if !ok {
+				t.Fatalf("failed to cast value to int: %s", v)
+
+				return ""
+			}
+
+			return fmt.Sprintf("%d", val)
+		}
+	default:
+		t.Fatalf("Invalid field: %s", v)
+
+		return ""
+	}
+}
+
+func CheckField(t *testing.T, getFieldFunc GetFieldFunc, k string, v interface{}) bool {
+	switch v.(type) {
+	case string:
+		actual := getFieldFunc(t, k)
+		if actual != v {
+			t.Fatalf("Field: %s, actual: %s, expected: %s", k, actual, v)
+
+			return false
+		}
+	case bool:
+		{
+			actual := getBoolField(t, obj, k)
+			if actual != v.value {
+				t.Fatalf("Field: %s, actual: %t, expected: %t", k, actual, v.value)
+
+				return false
+			}
+		}
+	case reflect.:
+		{
+			actual := getDurationField(t, obj, k)
+			if actual != v.value {
+				t.Fatalf("Field: %s, actual: %s, expected: %s", k, actual, v.value)
+
+				return false
+			}
+		}
+	case reflect.Int:
+		{
+			actual := getIntField(t, obj, k)
+			if actual != v.value {
+				t.Fatalf("Field: %s, actual: %d, expected: %d", k, actual, v.value)
+
+				return false
+			}
+		}
+	default:
+		t.Fatalf("Invalid field: %s", k)
+
+		return false
+	}
+
+	return true
+}
+
+func CheckFields(t *testing.T, obj interface{}, fields map[string]interface{}) bool {
+	for k, v := range fields {
+		if !CheckField(t, obj, k, v) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// CastToStringList casts an interface to a []string
+func CastToStringList(t *testing.T, data interface{}) []string {
+	strList, ok := data.([]string)
+	if !ok {
+		t.Fatalf("failed to cast interface to []string")
+
+		return nil
+	}
+	retrun strList
+}
+
+// CastToMapStringString casts an interface to a map[string]string
+func CastToMapStringString(t *testing.T, data interface{}) map[string]string {
+	strMap, ok := data.(map[string]string)
+	if !ok {
+		t.Fatalf("failed to cast interface to map[string]string")
+
+		return nil
+	}
+	retrun strMap
+}
+
+// UnsetEnvs unsets a list of environmental variables
+func UnsetEnvs(t *testing.T, names []string) {
+	for _, env := range names {
+		UnsetEnv(t, env)
+		if t.Failed() {
+			return
+		}
+	}
+}
+
+// SetEnv sets an environmental variable.
+func SetEnv(t *testing.T, envName, envValue string) {
+	if err := os.Setenv(envName, envValue); err != nil {
+		t.Fatalf("failed to set environmental variable: %s to %s, %s", envName, envValue, err)
+
+		return
+	}
+
+	t.Logf("environmental variable: %s, set to %s", envName, envValue)
+}
+
+// UnsetEnv unsets an environmental variable.
+func UnsetEnv(t *testing.T, envName string) {
+	if err := os.Unsetenv(envName); err != nil {
+		t.Fatalf("failed to unset environmental variable: %s , %s", envName, err)
+
+		return
+	}
+}
+
+// SetEnvs sets a number of environmental variables
+func SetEnvs(t *testing.T, envSettings map[string]string) {
+	for name, val := range envSettings {
+		SetEnv(t, name, val)
+		if t.Failed() {
+			return
+		}
+	}
+}
+
 // RemoveBottom removes items from caller list including and prior to testing.tRunner().
 func RemoveBottom(callers []string) []string {
 	ourCallers := []string{}

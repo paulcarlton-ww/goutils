@@ -1,7 +1,6 @@
 package testutils
 
 import (
-	"os"
 	"reflect"
 	"testing"
 
@@ -10,19 +9,23 @@ import (
 
 type (
 	// PrepTestI defines function to be called before running a test.
-	PrepTestI func(t *testing.T, test *DefTest)
+	PrepTestI func(t *testing.T, test *DefTest, setterFunc SetFieldFunc)
 	// CheckTestI definesfunction to be called after test to check result.
-	CheckTestI func(t *testing.T, actual interface{}, test *DefTest) bool
+	CheckTestI func(t *testing.T, actual []interface{}, test *DefTest, getterFunc GetFieldFunc) bool
 	// ReportTestI defines function to be called to report test results.
-	ReportTestI func(t *testing.T, actual interface{}, test *DefTest)
-
+	ReportTestI func(t *testing.T, actual []interface{}, test *DefTest, getterFunc GetFieldFunc)
+	// GetFieldFunc is the function to call to get the value of a field of an object
+	GetFieldFunc func(t *testing.T, obj interface{}, fieldName string)
+	// SetFieldFunc is the function to call to set the value of a field of an object
+	SetFieldFunc func(t *testing.T, obj interface{}, fieldName string, value interface{})
 	// DefTest generic tests data structure used by tests.
 	DefTest struct {
 		Number      int         // Test number
 		Description string      // Test description
 		Config      interface{} // Test configuration, to be used by custom preTest Function
-		Input       interface{} // Test input
-		Expected    interface{} // Test Expected result
+		Inputs      []interface{} // Test inputs
+		Expected    []interface{} // Test Expected results
+		Status      map[string]interface{} // map of object under test field names and expected values, used by CheckFunc to verify values
 		PrepFunc    PrepTestI   // Function to be called before a test,
 		// leave unset to call default - which prints the test number and name
 		CheckFunc CheckTestI // Function to be called to check a test results,
@@ -91,45 +94,26 @@ func GetReportTestsFunc(test *DefTest) ReportTestI {
 }
 
 // DefaultPrep is the default pre test function that prints the test number and name.
-func DefaultPrep(t *testing.T, test *DefTest) {
+func DefaultPrep(t *testing.T, test *DefTest, setterFunc SetFieldFunc) {
 	t.Logf("Test: %d, %s\n", test.Number, test.Description)
 }
 
 // DefaultCheck is the default check test function that compares actual and expected as strings.
-func DefaultCheck(t *testing.T, actual interface{}, test *DefTest) bool {
+func DefaultCheck(t *testing.T, actual []interface{}, test *DefTest, getterFunc GetFieldFunc) bool {
+
 	return reflect.DeepEqual(actual, test.Expected) && !FailTests
 }
 
-// SetEnv sets an environmental variable.
-func SetEnv(t *testing.T, envName, envValue string) bool {
-	if err := os.Setenv(envName, envValue); err != nil {
-		t.Errorf("failed to set environmental variable: %s to %s, %s", envName, envValue, err)
-
-		return false
-	}
-
-	t.Logf("environmental variable: %s, set to %s", envName, envValue)
-
-	return true
-}
-
-// UnsetEnv unsets an environmental variable.
-func UnsetEnv(t *testing.T, envName string) {
-	if err := os.Unsetenv(envName); err != nil {
-		t.Errorf("failed to unset environmental variable: %s , %s", envName, err)
-	}
-}
-
 // DefaultReport is the default report test results function reports input, actual and expected as strings.
-func DefaultReport(t *testing.T, actual interface{}, test *DefTest) {
+func DefaultReport(t *testing.T, actual []interface{}, test *DefTest, getterFunc GetFieldFunc) {
 	t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s",
-		test.Number, test.Description, spew.Sdump(test.Input), spew.Sdump(actual), spew.Sdump(test.Expected))
+		test.Number, test.Description, spew.Sdump(test.Inputs), spew.Sdump(actual), spew.Sdump(test.Expected))
 }
 
 // PostTestActions call after test to call check function and report function if check fails.
-func PostTestActions(t *testing.T, result interface{}, test *DefTest) {
-	if !GetCheckTestsFunc(test)(t, result, test) {
+func PostTestActions(t *testing.T, result []interface{}, test *DefTest, getterFunc GetFieldFunc) {
+	if !GetCheckTestsFunc(test)(t, result, test, getterFunc) {
 		t.Logf("Test failed")
-		GetReportTestsFunc(test)(t, result, test)
+		GetReportTestsFunc(test)(t, result, test, getterFunc)
 	}
 }
