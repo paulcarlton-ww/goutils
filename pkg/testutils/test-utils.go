@@ -458,7 +458,14 @@ func GetTestJSON(t *testing.T, data interface{}) string {
 }
 
 // CallMethod calls a method on an object and returns the results.
-func CallMethod(obj interface{}, methodName string, params []interface{}) (results []interface{}, err error) {
+func CallMethod(t *testing.T, obj interface{}, methodName string, params []interface{}) []interface{} {
+	handlepanic := func() {
+		if a := recover(); a != nil {
+			t.Fatalf("%s", a)
+		}
+	}
+	defer handlepanic()
+
 	method := reflect.ValueOf(obj).MethodByName(methodName)
 	p := []reflect.Value{}
 
@@ -467,10 +474,11 @@ func CallMethod(obj interface{}, methodName string, params []interface{}) (resul
 	}
 
 	values := method.Call(p)
+	results := []interface{}{}
 
 	for _, result := range values {
 		results = append(results, result.Interface())
 	}
 
-	return results, nil
+	return results
 }
