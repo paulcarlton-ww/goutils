@@ -249,6 +249,17 @@ func UnsetEnvs(t *testing.T, names []string) {
 	}
 }
 
+// MapKeysToList returns the keys of a map[string]string as a list.
+func MapKeysToList(envsMap map[string]string) []string {
+	keys := make([]string, 0, len(envsMap))
+
+	for k := range envsMap {
+		keys = append(keys, k)
+	}
+
+	return keys
+}
+
 // SetEnv sets an environmental variable.
 func SetEnv(t *testing.T, envName, envValue string) {
 	if err := os.Setenv(envName, envValue); err != nil {
