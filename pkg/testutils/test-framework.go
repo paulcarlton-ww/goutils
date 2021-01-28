@@ -9,11 +9,11 @@ import (
 
 type (
 	// PrepTestI defines function to be called before running a test.
-	PrepTestI func(t *testing.T, test *DefTest, setterFunc SetFieldFunc)
+	PrepTestI func(t *testing.T, test *DefTest)
 	// CheckTestI definesfunction to be called after test to check result.
-	CheckTestI func(t *testing.T, actual []interface{}, test *DefTest, objStatus *ObjectStatus) bool
+	CheckTestI func(t *testing.T, test *DefTest) bool
 	// ReportTestI defines function to be called to report test results.
-	ReportTestI func(t *testing.T, actual []interface{}, test *DefTest, objStatus *ObjectStatus)
+	ReportTestI func(t *testing.T, test *DefTest)
 
 	// GetFieldFunc is the function to call to get the value of a field of an object.
 	GetFieldFunc func(t *testing.T, obj interface{}, fieldName string) interface{}
@@ -47,7 +47,8 @@ type (
 		Description string        // Test description.
 		Config      interface{}   // Test configuration, to be used by custom preTest Function.
 		Inputs      []interface{} // Test inputs.
-		Expected    []interface{} // Test Expected results.
+		Expected    []interface{} // Test expected results.
+		Results     []interface{} // Test results.
 		ObjStatus   ObjectStatus  // Details of object under test including field names and expected values, used by CheckFunc to verify values.
 		PrepFunc    PrepTestI     // Function to be called before a test.
 		// leave unset to call default - which prints the test number and name.
@@ -57,85 +58,107 @@ type (
 		// leave unset to call default - which reports input, actual and expected as strings.
 	}
 
-	// ResultsErr is used to hold one or more return value and an error.
-	ResultsErr struct {
-		Items   uint8         // Number of Results.
-		Results []interface{} // Items returned.
-		Err     error         // Error returned.
+	// TestUtil the interface used to provide testing utilities.
+	TestUtil interface {
+		CallPrepFunc()                          // Call the custom ot defsult test preparation function.
+		CallCheckFunc() bool                    // Call the custom or default test checking function.
+		CallReportFunc()                        // Call the custom or default test reporting function.
+		CallPostTestActions(test *DefTest) bool // Calls custom or default check and reporting functions.
+		SetFailTests(value bool)
+		GetFailTests() bool
+		SetTestData(testData *DefTest)
+		GetTestData() *DefTest
+	}
+
+	// testUtil is used to hold configuration information for testing.
+	testUtil struct {
+		TestUtil             // TestUtil interface that operates in this object.
+		t         *testing.T // Testing object.
+		testData  *DefTest   // The definition of this test.
+		failTests bool       // Set to make default test check function reported retrun false to test report function.
 	}
 )
 
-var (
-	// Prep is the default pre test function.
-	Prep = DefaultPrep // nolint:gochecknoglobals // ok
-	// Check is the default  post test result check.
-	Check = DefaultCheck // nolint:gochecknoglobals // ok
-	// Report is the default post test results reporter.
-	Report = DefaultReport // nolint:gochecknoglobals // ok
-	// NilValue the text used in place of a nil value in test report.
-	// The user can change this value if needed.
-	NilValue = "testutils.ToString returned nil value" // nolint:gochecknoglobals // ok
-)
+// NewTestUtil retruns a new TestUtil interface.
+func NewTestUtil(t *testing.T, testData *DefTest) TestUtil {
+	u := &testUtil{failTests: false}
+	u.t = t
+	u.testData = testData
 
-// RestoreDefaultTestFuncs is used to restore the default functions after a series of tests against a function.
-// Call defer RestoreDefaultTestFuncs() at the start of a test function and then set Prep, Check and Report
-// to the functions to be used for testing the function being tested.
-func RestoreDefaultTestFuncs() {
-	// Default pre test function.
-	Prep = DefaultPrep
-	// Default post test result check.
-	Check = DefaultCheck
-	// Default post test results reporter.
-	Report = DefaultReport
+	return u
 }
 
-// GetPrepTestFunc calls the pre test function.
-func GetPrepTestFunc(test *DefTest) PrepTestI {
-	if test.PrepFunc == nil {
-		return Prep
+// CallPrepFunc calls the pre test setup function.
+func (u *testUtil) CallPrepFunc() {
+	if u.testData.PrepFunc == nil {
+		DefaultPrepFunc(u.t, u.testData)
+
+		return
 	}
 
-	return test.PrepFunc
+	u.testData.PrepFunc(u.t, u.testData)
 }
 
-// GetCheckTestsFunc calls the check test function.
-func GetCheckTestsFunc(test *DefTest) CheckTestI {
-	if test.CheckFunc == nil {
-		return Check
+// CallCheckTestsFunc calls the check test result function.
+func (u *testUtil) CallCheckFunc() bool {
+	if u.testData.CheckFunc == nil {
+		return DefaultCheckFunc(u.t, u.testData)
 	}
 
-	return test.CheckFunc
+	return u.testData.CheckFunc(u.t, u.testData)
 }
 
-// GetReportTestsFunc calls the report test function.
-func GetReportTestsFunc(test *DefTest) ReportTestI {
-	if test.ReportFunc == nil {
-		return Report
+// CallReportFunc calls the report test results function.
+func (u *testUtil) CallReportFunc() {
+	if u.testData.ReportFunc == nil {
+		DefaultReportFunc(u.t, u.testData)
+
+		return
 	}
 
-	return test.ReportFunc
-}
-
-// DefaultPrep is the default pre test function that prints the test number and name.
-func DefaultPrep(t *testing.T, test *DefTest, setterFunc SetFieldFunc) {
-	t.Logf("Test: %d, %s\n", test.Number, test.Description)
-}
-
-// DefaultCheck is the default check test function that compares actual and expected as strings.
-func DefaultCheck(t *testing.T, actual []interface{}, test *DefTest, objStatus *ObjectStatus) bool {
-	return reflect.DeepEqual(actual, test.Expected) && !FailTests
-}
-
-// DefaultReport is the default report test results function reports input, actual and expected as strings.
-func DefaultReport(t *testing.T, actual []interface{}, test *DefTest, objStatus *ObjectStatus) {
-	t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s",
-		test.Number, test.Description, spew.Sdump(test.Inputs), spew.Sdump(actual), spew.Sdump(test.Expected))
+	u.testData.ReportFunc(u.t, u.testData)
 }
 
 // PostTestActions call after test to call check function and report function if check fails.
-func PostTestActions(t *testing.T, result []interface{}, test *DefTest, objStatus *ObjectStatus) {
-	if !GetCheckTestsFunc(test)(t, result, test, objStatus) {
-		t.Logf("Test: %d, %s, failed", test.Number, test.Description)
-		GetReportTestsFunc(test)(t, result, test, objStatus)
+func (u *testUtil) PostTestActions() bool {
+	if !u.CallCheckFunc() {
+		u.t.Logf("Test: %d, %s, failed", u.testData.Number, u.testData.Description)
+		u.CallReportFunc()
+
+		return false
 	}
+
+	return true
+}
+
+func (u *testUtil) SetFailTests(value bool) {
+	u.failTests = value
+}
+
+func (u *testUtil) GetFailTests() bool {
+	return u.failTests
+}
+
+func (u *testUtil) SetTestData(testData *DefTest) {
+	u.testData = testData
+}
+
+func (u *testUtil) GetTestData() *DefTest {
+	return u.testData
+}
+
+// DefaultPrepFunc is the default pre test function that prints the test number and name.
+func DefaultPrepFunc(t *testing.T, test *DefTest) {
+	t.Logf("Test: %d, %s\n", test.Number, test.Description)
+}
+
+// DefaultCheckFunc is the default check test function that compares actual and expected as strings.
+func DefaultCheckFunc(t *testing.T, test *DefTest) bool {
+	return reflect.DeepEqual(test.Results, test.Expected) && !FailTests
+}
+
+// DefaultReportFunc is the default report test results function reports input, actual and expected as strings.
+func DefaultReportFunc(t *testing.T, test *DefTest) {
+	t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s",
+		test.Number, test.Description, spew.Sdump(test.Inputs), spew.Sdump(test.Results...), spew.Sdump(test.Expected))
 }
