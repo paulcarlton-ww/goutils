@@ -60,9 +60,9 @@ type (
 
 	// TestUtil the interface used to provide testing utilities.
 	TestUtil interface {
-		CallPrepFunc()                          // Call the custom ot defsult test preparation function.
-		CallCheckFunc() bool                    // Call the custom or default test checking function.
-		CallReportFunc()                        // Call the custom or default test reporting function.
+		CallPrepFunc()             // Call the custom ot defsult test preparation function.
+		CallCheckFunc() bool       // Call the custom or default test checking function.
+		CallReportFunc()           // Call the custom or default test reporting function.
 		CallPostTestActions() bool // Calls custom or default check and reporting functions.
 		SetFailTests(value bool)
 		GetFailTests() bool
@@ -154,6 +154,19 @@ func DefaultPrepFunc(t *testing.T, test *DefTest) {
 
 // DefaultCheckFunc is the default check test function that compares actual and expected as strings.
 func DefaultCheckFunc(t *testing.T, test *DefTest) bool {
+	for field, info := range test.ObjStatus.Fields {
+		if test.ObjStatus.GetField != nil {
+			if test.ObjStatus.GetField(t, test.ObjStatus.Object, field) != info.FieldValue {
+				return false
+			}
+		}
+		if len(info.GetterMethod) > 0 && test.ObjStatus.CallMethod != nil {
+			if test.ObjStatus.CallMethod(t, test.ObjStatus.Object, info.GetterMethod, []interface{}{}) != info.FieldValue {
+				return false
+			}
+		}	
+	}
+
 	return reflect.DeepEqual(test.Results, test.Expected) && !FailTests
 }
 
