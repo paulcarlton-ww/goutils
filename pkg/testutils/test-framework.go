@@ -63,7 +63,7 @@ type (
 		CallPrepFunc()                          // Call the custom ot defsult test preparation function.
 		CallCheckFunc() bool                    // Call the custom or default test checking function.
 		CallReportFunc()                        // Call the custom or default test reporting function.
-		CallPostTestActions(test *DefTest) bool // Calls custom or default check and reporting functions.
+		CallPostTestActions() bool // Calls custom or default check and reporting functions.
 		SetFailTests(value bool)
 		GetFailTests() bool
 		SetTestData(testData *DefTest)
