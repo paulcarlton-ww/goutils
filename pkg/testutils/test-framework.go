@@ -120,7 +120,7 @@ func (u *testUtil) CallReportFunc() {
 }
 
 // PostTestActions call after test to call check function and report function if check fails.
-func (u *testUtil) PostTestActions() bool {
+func (u *testUtil) CallPostTestActions() bool {
 	if !u.CallCheckFunc() {
 		u.t.Logf("Test: %d, %s, failed", u.testData.Number, u.testData.Description)
 		u.CallReportFunc()
