@@ -20,16 +20,15 @@ func CheckFieldValue(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 	test := u.TestData()
 	t := u.Testing()
 
-	if actual := test.ObjStatus.GetField(t, test.ObjStatus.Object, fieldName); actual != fieldInfo.FieldValue || u.FailTests() {
+	actual := test.ObjStatus.GetField(t, test.ObjStatus.Object, fieldName)
+	passed := actual == fieldInfo.FieldValue
+
+	if !passed || u.FailTests() {
 		t.Errorf("\nTest: %d, %s\nField: %s\nGot.....: %s\nExpected: %s",
 			test.Number, test.Description, fieldName, spew.Sdump(actual), spew.Sdump(fieldInfo.FieldValue))
-
-		if !u.FailTests() {
-			return false
-		}
 	}
 
-	return true
+	return passed
 }
 
 // CheckFieldGetter will the getter function of a field and check the value is equal to the expected value and set the test to failed if not.
@@ -38,17 +37,18 @@ func CheckFieldGetter(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 	t := u.Testing()
 
 	if len(fieldInfo.GetterMethod) > 0 {
-		if results := test.ObjStatus.CallMethod(t, test.ObjStatus.Object, fieldInfo.GetterMethod, []interface{}{}); results[0] != fieldInfo.FieldValue || u.FailTests() {
+		results := test.ObjStatus.CallMethod(t, test.ObjStatus.Object, fieldInfo.GetterMethod, []interface{}{})
+		passed := results[0] == fieldInfo.FieldValue
+
+		if !passed || u.FailTests() {
 			t.Errorf("\nTest: %d, %s\nField: %s, Getter function: %s\nGot.....: %s\nExpected: %s",
 				test.Number, test.Description, fieldName, fieldInfo.GetterMethod, spew.Sdump(results), spew.Sdump([]interface{}{fieldInfo.FieldValue}))
-
-			if !u.FailTests() {
-				return false
-			}
 		}
-	} else {
-		t.Logf("field getter method not set, skipping check of field: %s getter", fieldName)
+
+		return passed
 	}
+
+	t.Logf("field getter method not set, skipping check of field: %s getter", fieldName)
 
 	return true
 }

@@ -148,14 +148,11 @@ func CheckCallResultsFunc(u TestUtil) bool {
 	test := u.TestData()
 	t := u.Testing()
 
-	if !reflect.DeepEqual(test.Results, test.Expected) || u.FailTests() {
+	result := reflect.DeepEqual(test.Results, test.Expected)
+	if !result || u.FailTests() {
 		t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s",
 			test.Number, test.Description, spew.Sdump(test.Inputs), spew.Sdump(test.Results), spew.Sdump(test.Expected))
-
-		if !u.FailTests() {
-			return false
-		}
 	}
 
-	return true
+	return result
 }
