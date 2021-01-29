@@ -15,6 +15,41 @@ import (
 
 // Test utilities
 
+// CopyObjectStatus copys an ObjectStatus object leaving Fields element empty.
+func CopyObjectStatus(objStatus *ObjectStatus) *ObjectStatus {
+	return &ObjectStatus{
+		Object:     objStatus.Object,
+		GetField:   objStatus.GetField,
+		SetField:   objStatus.SetField,
+		CallMethod: objStatus.CallMethod,
+		Fields:     make(Fields, len(objStatus.Fields)),
+	}
+}
+
+// SetObjStatusFields sets the values in the FieldInfo struct, used to update a template ObjectStatus with values for a given test.
+func SetObjStatusFields(t *testing.T, objStatus *ObjectStatus, fieldValues map[string]interface{}, retain bool) *ObjectStatus {
+	newObj := CopyObjectStatus(objStatus)
+
+	if retain {
+		newObj.Fields = objStatus.Fields
+	}
+
+	for fieldName, fieldValue := range fieldValues {
+		info, ok := objStatus.Fields[fieldName]
+
+		if !ok {
+			t.Logf("field: %s not found in object status fields", fieldName)
+
+			continue
+		}
+
+		info.FieldValue = fieldValue
+		newObj.Fields[fieldName] = info
+	}
+
+	return newObj
+}
+
 // CheckFieldValue will check if a field value is equal to the expected value and set the test to failed if not.
 func CheckFieldValue(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 	test := u.TestData()

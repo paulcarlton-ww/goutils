@@ -48,7 +48,7 @@ type (
 		Inputs      []interface{} // Test inputs.
 		Expected    []interface{} // Test expected results.
 		Results     []interface{} // Test results.
-		ObjStatus   ObjectStatus  // Details of object under test including field names and expected values, used by CheckFunc to verify values.
+		ObjStatus   *ObjectStatus // Details of object under test including field names and expected values, used by CheckFunc to verify values.
 		PrepFunc    PrepTestI     // Function to be called before a test.
 		// leave unset to call default - which prints the test number and name.
 		CheckFunc CheckTestI // Function to be called to check a test results.
