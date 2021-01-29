@@ -1,10 +1,12 @@
-package testutils // nolint:testpackage // Prefer test in package
+package testutils_test
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
 	"testing"
+
+	"github.com/paulcarlton-ww/goutils/pkg/testutils"
 )
 
 func TestContainsStringArray(t *testing.T) {
@@ -24,8 +26,8 @@ func TestContainsStringArray(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result := ContainsStringArray(test.one, test.two, false)
-		if result != test.expected || FailTests {
+		result := testutils.ContainsStringArray(test.one, test.two, false)
+		if result != test.expected {
 			t.Errorf("\nTest: %d\narray one:\n%+v\narray two:\n%+v\nExpected: %t\nGot.....: %t",
 				test.testNum, test.one, test.two, test.expected, result)
 		}
@@ -44,8 +46,8 @@ func TestReadBuf(t *testing.T) {
 			buffer.WriteString(fmt.Sprintf("%s\n", input))
 		}
 
-		result := ReadBuf(buffer)
-		if !ContainsStringArray(*result, *test.expected, true) || FailTests {
+		result := testutils.ReadBuf(buffer)
+		if !testutils.ContainsStringArray(*result, *test.expected, true) {
 			t.Errorf("\nExpected:\n%+v\nGot.....:\n%+v", test.expected, result)
 		}
 	}
@@ -60,8 +62,8 @@ func TestDisplayStrings(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result := DisplayStrings(test.one)
-		if result != test.expected || FailTests {
+		result := testutils.DisplayStrings(test.one)
+		if result != test.expected {
 			t.Errorf("\ninput:\n%+v\nExpected:\n%s\nGot.....:\n%s",
 				test.one, test.expected, result)
 		}
@@ -132,8 +134,8 @@ func TestCompareWhereList(t *testing.T) { // nolint: funlen // ok
 	}
 
 	for _, test := range tests {
-		result := CompareWhereList(test.one, test.two)
-		if result != test.expected || FailTests {
+		result := testutils.CompareWhereList(test.one, test.two)
+		if result != test.expected {
 			t.Errorf("\nTest: %d\nlist one:\n%+v\nlist two:\n%+v\nExpected: %t\nGot.....: %t",
 				test.testNum, test.one, test.two, test.expected, result)
 		}
@@ -159,8 +161,8 @@ func TestCompareWhere(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result := CompareWhere(test.one, test.two)
-		if result != test.expected || FailTests {
+		result := testutils.CompareWhere(test.one, test.two)
+		if result != test.expected {
 			t.Errorf("\nTest: %d\none:\n%s\ntwo:\n%s\nExpected: %t\nGot.....: %t",
 				test.testNum, test.one, test.two, test.expected, result)
 		}
@@ -231,8 +233,8 @@ func TestCompareItems(t *testing.T) { // nolint: funlen // ok
 	}
 
 	for _, test := range tests {
-		result := CompareItems(test.one, test.two)
-		if result != test.expected || FailTests {
+		result := testutils.CompareItems(test.one, test.two)
+		if result != test.expected {
 			t.Errorf("Test: %d\nExpected:\n%t\nGot....:\n%t\nInput Data:\n%+v\n%+v\n",
 				test.testNum, test.expected, result, test.one, test.two)
 		}

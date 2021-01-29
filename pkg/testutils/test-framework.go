@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"os"
 	"reflect"
 	"testing"
 
@@ -12,10 +13,6 @@ type (
 	PrepTestI func(u TestUtil)
 	// CheckTestI definesfunction to be called after test to check result.
 	CheckTestI func(u TestUtil) bool
-	// CheckCallResultsFuncI defines a function to be called after test to check result of call.
-	CheckCallResultsFuncI func(u TestUtil) bool
-	// CheckObjStatusFuncI defines a function to be called after test to check state of object fields.
-	CheckObjStatusFuncI func(u TestUtil) bool
 
 	// GetFieldFunc is the function to call to get the value of a field of an object.
 	GetFieldFunc func(t *testing.T, obj interface{}, fieldName string) interface{}
@@ -84,6 +81,11 @@ func NewTestUtil(t *testing.T, testData *DefTest) TestUtil {
 	u.t = t
 	u.testData = testData
 
+	_, present := os.LookupEnv("FAILED_OUTPUT_TEST")
+	if present {
+		u.failTests = true
+	}
+
 	return u
 }
 
@@ -133,43 +135,12 @@ func DefaultPrepFunc(u TestUtil) {
 
 // DefaultCheckFunc is the default check test function that compares actual and expected as strings.
 func DefaultCheckFunc(u TestUtil) bool {
-	if !CheckCallResultsFunc(u) {
-		return false
-	}
-
-	if !CheckObjStatusFunc(u) {
-		return false
-	}
-
-	return true
+	return CheckCallResultsFunc(u) && CheckObjStatusFunc(u)
 }
 
 // CheckObjStatusFunc checks object fields values against expected and report if different.
 func CheckObjStatusFunc(u TestUtil) bool {
-	test := u.TestData()
-	t := u.Testing()
-
-	for fieldName, fieldInfo := range test.ObjStatus.Fields {
-		if test.ObjStatus.GetField != nil {
-			if actual := test.ObjStatus.GetField(t, test.ObjStatus.Object, fieldName); actual != fieldInfo.FieldValue {
-				t.Errorf("\nTest: %d, %s\nField: %s\nGot.....: %s\nExpected: %s",
-					test.Number, test.Description, fieldName, spew.Sdump(actual), spew.Sdump(fieldInfo.FieldValue))
-
-				return false
-			}
-		}
-
-		if len(fieldInfo.GetterMethod) > 0 && test.ObjStatus.CallMethod != nil {
-			if results := test.ObjStatus.CallMethod(t, test.ObjStatus.Object, fieldInfo.GetterMethod, []interface{}{}); results[0] != fieldInfo.FieldValue {
-				t.Errorf("\nTest: %d, %s\nField: %s, Getter function: %s\nGot.....: %s\nExpected: %s",
-					test.Number, test.Description, fieldName, fieldInfo.GetterMethod, spew.Sdump(results), spew.Sdump([]interface{}{fieldInfo.FieldValue}))
-
-				return false
-			}
-		}
-	}
-
-	return true
+	return CheckFieldsValue(u) && CheckFieldsGetter(u)
 }
 
 // CheckCallResultsFunc checks call results against expected and report if different .
@@ -181,7 +152,9 @@ func CheckCallResultsFunc(u TestUtil) bool {
 		t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s",
 			test.Number, test.Description, spew.Sdump(test.Inputs), spew.Sdump(test.Results), spew.Sdump(test.Expected))
 
-		return false
+		if !u.FailTests() {
+			return false
+		}
 	}
 
 	return true

@@ -9,209 +9,88 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 // Test utilities
 
-// FailTests determines if tests are set to failed so expected and results are emitted even if tests pass.
-// Set to true to test failure output.
-var FailTests = false // nolint:gochecknoglobals // ok
+// CheckFieldValue will check if a field value is equal to the expected value and set the test to failed if not.
+func CheckFieldValue(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
+	test := u.TestData()
+	t := u.Testing()
 
-/*
-func getBoolField(t *testing.T, obj interface{}, field string) bool {
-	value, err := config.GetField(obj, field)
-	if err != nil {
-		t.Fatalf("failed to get field '%s' value, %s", field, err)
+	if actual := test.ObjStatus.GetField(t, test.ObjStatus.Object, fieldName); actual != fieldInfo.FieldValue || u.FailTests() {
+		t.Errorf("\nTest: %d, %s\nField: %s\nGot.....: %s\nExpected: %s",
+			test.Number, test.Description, fieldName, spew.Sdump(actual), spew.Sdump(fieldInfo.FieldValue))
 
-		return false
-	}
-
-	boolValue, ok := value.(bool)
-	if !ok {
-		t.Fatalf("failed to cast field '%s' value, %s to bool", field, err)
-
-		return false
-	}
-	return boolValue
-}
-
-func getStringField(t *testing.T, obj interface{}, field string) string {
-	value, err := obj.GetField(obj, field)
-	if err != nil {
-		t.Fatalf("failed to get field '%s' value %s", field, err)
-
-		return ""
-	}
-
-	strValue, ok := value.(string)
-	if !ok {
-		t.Fatalf("failed to cast field '%s' value, %s to string", field, err)
-
-		return false
-	}
-	return boolValue
-}
-
-func getIntField(t *testing.T, obj interface{}, field string) int {
-	value, err := config.GetField(obj, field)
-	if err != nil {
-		t.Fatalf("failed to get field value, %s", err)
-
-		return 0
-	}
-
-	return int(value.Int())
-}
-
-func getDurationField(t *testing.T, obj interface{}, field string) time.Duration {
-	value, err := config.GetField(obj, field)
-	if err != nil {
-		t.Fatalf("failed to get field value, %s", err)
-
-		return 0
-	}
-
-	return time.Duration(value.Int())
-}
-
-func getFieldString(t *testing.T, obj interface{}, k string, v TypeValue) string { // nolint:deadcode,unused // ok
-	switch v.name {
-	case stringType:
-		return getStringField(t, obj, k)
-	case boolType:
-		{
-			return fmt.Sprintf("%t", getBoolField(t, obj, k))
-		}
-	case durationType:
-		{
-			return getDurationField(t, obj, k).String()
-		}
-	case intType:
-		{
-			return fmt.Sprintf("%d", getIntField(t, obj, k))
-		}
-	default:
-		t.Fatalf("Invalid field: %s", k)
-
-		return ""
-	}
-}
-
-func getTypeString(t *testing.T, v TypeValue) string { // nolint:deadcode,unused // ok
-	switch v.name {
-	case stringType:
-		str, ok := v.value.(string)
-		if !ok {
-			t.Fatalf("failed to cast value to string: %s", v)
-
-			return ""
-		}
-
-		return str
-	case boolType:
-		{
-			val, ok := v.value.(bool)
-			if !ok {
-				t.Fatalf("failed to cast value to bool: %s", v)
-
-				return ""
-			}
-
-			return fmt.Sprintf("%t", val)
-		}
-	case durationType:
-		{
-			val, ok := v.value.(time.Duration)
-			if !ok {
-				t.Fatalf("failed to cast value to duration: %s", v)
-
-				return ""
-			}
-
-			return val.String()
-		}
-	case intType:
-		{
-			val, ok := v.value.(int)
-			if !ok {
-				t.Fatalf("failed to cast value to int: %s", v)
-
-				return ""
-			}
-
-			return fmt.Sprintf("%d", val)
-		}
-	default:
-		t.Fatalf("Invalid field: %s", v)
-
-		return ""
-	}
-}
-*/
-// CheckField will check if a field value is equal to the expected value and set the test to failed if not.
-func CheckField(t *testing.T, obj interface{}, getFieldFunc GetFieldFunc, k string, v interface{}) {
-	actual := getFieldFunc(t, obj, k)
-	if actual != v {
-		t.Fatalf("Field: %s, actual: %s, expected: %s", k, actual, v)
-	}
-}
-
-/*
-func CheckField(t *testing.T, getFieldFunc GetFieldFunc, k string, v interface{}) bool {
-	switch v.(type) {
-	case string:
-		actual := getFieldFunc(t, k)
-		if actual != v {
-			t.Fatalf("Field: %s, actual: %s, expected: %s", k, actual, v)
-
+		if !u.FailTests() {
 			return false
 		}
-	case bool:
-		{
-			actual := getBoolField(t, obj, k)
-			if actual != v.value {
-				t.Fatalf("Field: %s, actual: %t, expected: %t", k, actual, v.value)
-
-				return false
-			}
-		}
-	case time.Duration:
-		{
-			actual := getDurationField(t, obj, k)
-			if actual != v.value {
-				t.Fatalf("Field: %s, actual: %s, expected: %s", k, actual, v.value)
-
-				return false
-			}
-		}
-	case int:
-		{
-			actual := getIntField(t, obj, k)
-			if actual != v.value {
-				t.Fatalf("Field: %s, actual: %d, expected: %d", k, actual, v.value)
-
-				return false
-			}
-		}
-	default:
-		t.Fatalf("Invalid field: %s", k)
-
-		return false
 	}
 
 	return true
 }
-*/
 
-// CheckFields will check a map of field names and expected values are equal to the actual value and set the test to failed if not.
-func CheckFields(t *testing.T, obj interface{}, getFieldFunc GetFieldFunc, fields Fields) {
-	for k, v := range fields {
-		CheckField(t, obj, getFieldFunc, k, v.FieldValue)
+// CheckFieldGetter will the getter function of a field and check the value is equal to the expected value and set the test to failed if not.
+func CheckFieldGetter(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
+	test := u.TestData()
+	t := u.Testing()
 
-		if t.Failed() {
-			return
+	if len(fieldInfo.GetterMethod) > 0 {
+		if results := test.ObjStatus.CallMethod(t, test.ObjStatus.Object, fieldInfo.GetterMethod, []interface{}{}); results[0] != fieldInfo.FieldValue || u.FailTests() {
+			t.Errorf("\nTest: %d, %s\nField: %s, Getter function: %s\nGot.....: %s\nExpected: %s",
+				test.Number, test.Description, fieldName, fieldInfo.GetterMethod, spew.Sdump(results), spew.Sdump([]interface{}{fieldInfo.FieldValue}))
+
+			if !u.FailTests() {
+				return false
+			}
+		}
+	} else {
+		t.Logf("field getter method not set, skipping check of field: %s getter", fieldName)
+	}
+
+	return true
+}
+
+// CheckFieldsValue will get the value of object fields and check the expected values are equal to the actual value and set the test to failed if not.
+func CheckFieldsValue(u TestUtil) bool {
+	test := u.TestData()
+	t := u.Testing()
+
+	if test.ObjStatus.GetField == nil {
+		t.Logf("object Get Field function not set, skipping check of fields values")
+
+		return true
+	}
+
+	for fieldName, fieldInfo := range test.ObjStatus.Fields {
+		if !CheckFieldValue(u, fieldName, fieldInfo) {
+			return false
 		}
 	}
+
+	return true
+}
+
+// CheckFieldsGetter will call the getter functions on an object to check the expected values are equal to the actual value and set the test to failed if not.
+func CheckFieldsGetter(u TestUtil) bool {
+	test := u.TestData()
+	t := u.Testing()
+
+	if test.ObjStatus.CallMethod == nil {
+		t.Logf("object call method function not set, skipping check of fields getter functions")
+
+		return true
+	}
+
+	for fieldName, fieldInfo := range test.ObjStatus.Fields {
+		if !CheckFieldGetter(u, fieldName, fieldInfo) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // CastToStringList casts an interface to a []string.
@@ -382,14 +261,6 @@ func ContainsStringArray(one, two []string, first bool) bool {
 	return false
 }
 
-func init() { // nolint:gochecknoinits // ok
-	_, present := os.LookupEnv("FAILED_OUTPUT_TEST")
-
-	if present {
-		FailTests = true
-	}
-}
-
 // ReadBuf reads lines from a buffer into a string array.
 func ReadBuf(out io.Reader) *[]string {
 	output := []string{}
@@ -457,14 +328,15 @@ func GetTestJSON(t *testing.T, data interface{}) string {
 	return jsonResp
 }
 
+func HandlePanic(t *testing.T) {
+	if a := recover(); a != nil {
+		t.Fatalf("%s", a)
+	}
+}
+
 // CallMethod calls a method on an object and returns the results.
 func CallMethod(t *testing.T, obj interface{}, methodName string, params []interface{}) []interface{} {
-	handlepanic := func() {
-		if a := recover(); a != nil {
-			t.Fatalf("%s", a)
-		}
-	}
-	defer handlepanic()
+	defer HandlePanic(t)
 
 	method := reflect.ValueOf(obj).MethodByName(methodName)
 	p := []reflect.Value{}
