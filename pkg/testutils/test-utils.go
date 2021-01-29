@@ -31,7 +31,13 @@ func SetObjStatusFields(t *testing.T, objStatus *ObjectStatus, fieldValues map[s
 	newObj := CopyObjectStatus(objStatus)
 
 	if retain {
-		newObj.Fields = objStatus.Fields
+		for fieldName, fieldInfo := range objStatus.Fields {
+			newObj.Fields[fieldName] = FieldInfo{
+				GetterMethod: fieldInfo.GetterMethod,
+				SetterMethod: fieldInfo.SetterMethod,
+				FieldValue:   fieldInfo.FieldValue,
+			}
+		}
 	}
 
 	for fieldName, fieldValue := range fieldValues {
@@ -43,8 +49,11 @@ func SetObjStatusFields(t *testing.T, objStatus *ObjectStatus, fieldValues map[s
 			continue
 		}
 
-		info.FieldValue = fieldValue
-		newObj.Fields[fieldName] = info
+		newObj.Fields[fieldName] = FieldInfo{
+			GetterMethod: info.GetterMethod,
+			SetterMethod: info.SetterMethod,
+			FieldValue:   fieldValue,
+		}
 	}
 
 	return newObj
