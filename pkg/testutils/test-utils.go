@@ -64,6 +64,12 @@ func CheckFieldValue(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 	test := u.TestData()
 	t := u.Testing()
 
+	if test.ObjStatus == nil || test.ObjStatus.GetField == nil {
+		t.Logf("object Get Field function not set, skipping check of fields values")
+
+		return true
+	}
+
 	actual := test.ObjStatus.GetField(t, test.ObjStatus.Object, fieldName)
 	passed := actual == fieldInfo.FieldValue
 
@@ -79,6 +85,12 @@ func CheckFieldValue(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 func CheckFieldGetter(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 	test := u.TestData()
 	t := u.Testing()
+
+	if test.ObjStatus == nil || test.ObjStatus.CallMethod == nil {
+		t.Logf("object CallMethod function not set, skipping check of fields getters")
+
+		return true
+	}
 
 	if len(fieldInfo.GetterMethod) > 0 {
 		results := test.ObjStatus.CallMethod(t, test.ObjStatus.Object, fieldInfo.GetterMethod, []interface{}{})
@@ -102,7 +114,7 @@ func CheckFieldsValue(u TestUtil) bool {
 	test := u.TestData()
 	t := u.Testing()
 
-	if test.ObjStatus.GetField == nil {
+	if test.ObjStatus == nil || test.ObjStatus.GetField == nil {
 		t.Logf("object Get Field function not set, skipping check of fields values")
 
 		return true
@@ -122,7 +134,7 @@ func CheckFieldsGetter(u TestUtil) bool {
 	test := u.TestData()
 	t := u.Testing()
 
-	if test.ObjStatus.CallMethod == nil {
+	if test.ObjStatus == nil || test.ObjStatus.CallMethod == nil {
 		t.Logf("object call method function not set, skipping check of fields getter functions")
 
 		return true
