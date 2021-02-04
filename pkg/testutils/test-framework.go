@@ -62,6 +62,8 @@ type (
 		Testing() *testing.T
 		SetFailTests(value bool)
 		FailTests() bool
+		SetVerbose(value bool)
+		Verbose() bool
 		SetTestData(testData *DefTest)
 		TestData() *DefTest
 	}
@@ -72,6 +74,7 @@ type (
 		t         *testing.T // Testing object.
 		testData  *DefTest   // The definition of this test.
 		failTests bool       // Set to make default test check function reported retrun false to test report function.
+		verbose   bool       // Set to make testutils more verbose
 	}
 )
 
@@ -81,9 +84,14 @@ func NewTestUtil(t *testing.T, testData *DefTest) TestUtil {
 	u.t = t
 	u.testData = testData
 
-	_, present := os.LookupEnv("FAILED_OUTPUT_TEST")
+	_, present := os.LookupEnv("TESTUTILS_FAIL")
 	if present {
 		u.failTests = true
+	}
+
+	_, present = os.LookupEnv("TESTUTILS_VERBOSE")
+	if present {
+		u.verbose = true
 	}
 
 	return u

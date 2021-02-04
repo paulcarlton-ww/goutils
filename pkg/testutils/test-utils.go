@@ -7,10 +7,13 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"runtime/debug"
 	"strings"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+
+	"github.com/paulcarlton-ww/goutils/pkg/logging"
 )
 
 // Test utilities
@@ -135,7 +138,9 @@ func CheckFieldsGetter(u TestUtil) bool {
 	t := u.Testing()
 
 	if test.ObjStatus == nil || test.ObjStatus.CallMethod == nil {
-		t.Logf("object call method function not set, skipping check of fields getter functions")
+		if u.Verbose() {
+			t.Logf("object call method function not set, skipping check of fields getter functions")
+		}
 
 		return true
 	}
@@ -384,9 +389,11 @@ func GetTestJSON(t *testing.T, data interface{}) string {
 	return jsonResp
 }
 
+// HandlePanic handles a panic in test code calling testing.T.Fatal() with interface returned by recover().
 func HandlePanic(t *testing.T) {
 	if a := recover(); a != nil {
-		t.Fatalf("%s", a)
+		t.Fatalf("%s%s", logging.CallerText(logging.MyCallersCaller), a)
+		debug.PrintStack()
 	}
 }
 
@@ -394,7 +401,8 @@ func HandlePanic(t *testing.T) {
 func CallMethod(t *testing.T, obj interface{}, methodName string, params []interface{}) []interface{} {
 	defer HandlePanic(t)
 
-	method := reflect.ValueOf(obj).MethodByName(methodName)
+	ro := reflect.ValueOf(obj)
+	method := ro.MethodByName(methodName)
 	p := []reflect.Value{}
 
 	for _, param := range params {
@@ -402,7 +410,7 @@ func CallMethod(t *testing.T, obj interface{}, methodName string, params []inter
 	}
 
 	values := method.Call(p)
-	results := []interface{}{}
+	results := make([]interface{}, len(values))
 
 	for _, result := range values {
 		results = append(results, result.Interface())
