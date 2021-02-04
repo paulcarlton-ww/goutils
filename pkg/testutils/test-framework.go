@@ -119,6 +119,15 @@ func (u *testUtil) Testing() *testing.T {
 	return u.t
 }
 
+
+func (u *testUtil) SetVerbose(value bool) {
+	u.verbose = value
+}
+
+func (u *testUtil) Verbose() bool {
+	return u.verbose
+}
+
 func (u *testUtil) SetFailTests(value bool) {
 	u.failTests = value
 }
