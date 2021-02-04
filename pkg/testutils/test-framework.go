@@ -119,7 +119,6 @@ func (u *testUtil) Testing() *testing.T {
 	return u.t
 }
 
-
 func (u *testUtil) SetVerbose(value bool) {
 	u.verbose = value
 }

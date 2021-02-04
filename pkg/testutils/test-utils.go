@@ -400,7 +400,6 @@ func HandlePanic(t *testing.T) {
 // CallMethod calls a method on an object and returns the results.
 func CallMethod(t *testing.T, obj interface{}, methodName string, params []interface{}) []interface{} {
 	defer HandlePanic(t)
- 
 
 	ro := reflect.ValueOf(obj).MethodByName(methodName)
 	p := []reflect.Value{}
@@ -412,8 +411,8 @@ func CallMethod(t *testing.T, obj interface{}, methodName string, params []inter
 	values := ro.Call(p)
 	results := make([]interface{}, len(values))
 
-	for _, result := range values {
-		results = append(results, result.Interface())
+	for index, value := range values {
+		results[index] = value.Interface()
 	}
 
 	return results

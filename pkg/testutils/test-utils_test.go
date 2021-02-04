@@ -191,9 +191,9 @@ func TestCompareItems(t *testing.T) { // nolint: funlen // ok
 		subData
 	}
 
-	errAnError := errors.New("an error") // nolint:err113 // ?
+	errAnError := errors.New("an error") // nolint:goerr113 // ?
 
-	errDifferentError := errors.New("a different error") // nolint:err113 // ?
+	errDifferentError := errors.New("a different error") // nolint:goerr113 // ?
 
 	tests := []TestInfo{
 		{testNum: 1, one: 1, two: 2, expected: false},
