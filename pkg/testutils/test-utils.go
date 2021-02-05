@@ -329,7 +329,6 @@ func DisplayStrings(strs []string) string {
 // HandlePanic handles a panic in test code calling testing.T.Fatal() with interface returned by recover().
 func HandlePanic(t *testing.T) {
 	if a := recover(); a != nil {
-		t.Fatalf("%s%s", logging.CallerText(logging.MyCallersCaller), a)
 		t.Fatalf("%s%s\nstack trace... \n%s", logging.CallerText(logging.MyCallersCallersCaller), a, string(debug.Stack()))
 	}
 }
