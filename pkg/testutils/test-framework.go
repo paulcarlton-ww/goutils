@@ -4,8 +4,6 @@ import (
 	"os"
 	"reflect"
 	"testing"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 type (
@@ -151,7 +149,7 @@ func DefaultPrepFunc(u TestUtil) {
 
 // DefaultCheckFunc is the default check test function that compares actual and expected as strings.
 func DefaultCheckFunc(u TestUtil) bool {
-	return CheckCallResultsFunc(u) && CheckObjStatusFunc(u)
+	return CheckCallResultsReflect(u) && CheckObjStatusFunc(u)
 }
 
 // CheckObjStatusFunc checks object fields values against expected and report if different.
@@ -159,15 +157,26 @@ func CheckObjStatusFunc(u TestUtil) bool {
 	return CheckFieldsValue(u) && CheckFieldsGetter(u)
 }
 
-// CheckCallResultsFunc checks call results against expected and report if different .
-func CheckCallResultsFunc(u TestUtil) bool {
+// CheckCallResultsReflect uses reflect.DeepEqual tochecks call results against expected and report if different .
+func CheckCallResultsReflect(u TestUtil) bool {
 	test := u.TestData()
-	t := u.Testing()
 
 	result := reflect.DeepEqual(test.Results, test.Expected)
 	if !result || u.FailTests() {
-		t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s",
-			test.Number, test.Description, spew.Sdump(test.Inputs), spew.Sdump(test.Results), spew.Sdump(test.Expected))
+		ReportSpew(u)
+	}
+
+	return result
+}
+
+// CheckCallResultsJSON uses json comparison to checks call results against expected and report if different .
+func CheckCallResultsJSON(u TestUtil) bool {
+	test := u.TestData()
+	t := u.Testing()
+
+	result := CompareAsJSON(t, test.Results, test.Expected)
+	if !result || u.FailTests() {
+		ReportJSON(u)
 	}
 
 	return result

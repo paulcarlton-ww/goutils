@@ -1,6 +1,8 @@
 package testutils
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -394,4 +396,52 @@ func CheckError(u TestUtil) bool {
 	}
 
 	return true
+}
+
+// ReportSpew reports on result differences using spew.Sdump.
+func ReportSpew(u TestUtil) {
+	t := u.Testing()
+	test := u.TestData()
+
+	t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s",
+		test.Number, test.Description, spew.Sdump(test.Inputs), spew.Sdump(test.Results), spew.Sdump(test.Expected))
+}
+
+// ReportJSON reports on result differences using json.
+func ReportJSON(u TestUtil) {
+	t := u.Testing()
+	test := u.TestData()
+
+	t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s",
+		test.Number, test.Description, ToJSON(t, test.Inputs), ToJSON(t, test.Results), ToJSON(t, test.Expected))
+}
+
+// ToJSON is used get an interface in JSON format.
+func ToJSON(t *testing.T, data interface{}) string {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		t.Fatalf("failed to convert interface to json, %s", err)
+
+		return err.Error()
+	}
+
+	var prettyJSON bytes.Buffer
+
+	err = json.Indent(&prettyJSON, jsonData, "", "  ")
+	if err != nil {
+		t.Fatalf("failed to indent json, %s", err)
+
+		return err.Error()
+	}
+
+	return prettyJSON.String()
+}
+
+// CompareAsJSON compares two interfaces as JSON.
+func CompareAsJSON(t *testing.T, one, two interface{}) bool {
+	if one == nil && two == nil {
+		return true
+	}
+
+	return ToJSON(t, one) == ToJSON(t, two)
 }
