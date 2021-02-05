@@ -15,12 +15,15 @@ import (
 )
 
 const (
-	// Me is the levels setting for the function that called MyCaller.
+	// Me is the setting for the function that called MyCaller.
 	Me = 3
-	// MyCaller is the levels setting for the function that called the function calling MyCaller.
-	MyCaller        = 4
+	// MyCaller is the setting for the function that called the function calling MyCaller.
+	MyCaller = 4
+	// MyCallersCaller is the setting for the function that called the function that called the function calling MyCaller.
 	MyCallersCaller = 5
-	four            = 4
+	// MyCallersCallersCaller is the setting for the function that called the function that called the function that called the function calling MyCaller.
+	MyCallersCallersCaller = 6
+	four                   = 4
 )
 
 var errNotAvailable = errors.New("caller not availalble")

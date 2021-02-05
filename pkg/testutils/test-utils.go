@@ -1,8 +1,6 @@
 package testutils
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -254,47 +252,6 @@ func RemoveBottom(callers []string) []string {
 	return ourCallers
 }
 
-// CompareWhereList compares a list of strings returned by GetCaller or Callers but ignores line numbers.
-func CompareWhereList(one, two []string) bool {
-	if len(one) == 0 && len(two) == 0 { // Both empty return true
-		return true
-	}
-
-	if len(two) != len(one) {
-		return false
-	}
-
-	for index, field := range one {
-		if !CompareWhere(field, two[index]) {
-			return false
-		}
-	}
-
-	return true
-}
-
-// CompareWhere compares strings returned by GetCaller or Callers but ignores line numbers.
-func CompareWhere(one, two string) bool {
-	if strings.HasSuffix(one, "(NN)") || strings.HasSuffix(two, "(NN)") {
-		return one[:strings.LastIndex(one, "(")] == two[:strings.LastIndex(two, "(")]
-	}
-
-	return one == two
-}
-
-// CompareItems compares two items, returning true if both are nil.
-func CompareItems(one, two interface{}) bool {
-	if one == nil && two == nil {
-		return true
-	}
-
-	if one == nil || two == nil {
-		return false
-	}
-
-	return fmt.Sprintf("%+v", one) == fmt.Sprintf("%+v", two)
-}
-
 // ContainsStringArray checks items in two string arrays verifying that the second string array is
 // contained in the first.
 func ContainsStringArray(one, two []string, first bool) bool {
@@ -369,39 +326,11 @@ func DisplayStrings(strs []string) string {
 	return output
 }
 
-// ToJSON is used to convert a data structure into JSON format.
-// nolint godox ToDo address circular depencancies with internal/common and remove this
-func ToJSON(data interface{}) (string, error) {
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return "", err
-	}
-
-	var prettyJSON bytes.Buffer
-
-	err = json.Indent(&prettyJSON, jsonData, "", "\t")
-	if err != nil {
-		return "", err
-	}
-
-	return prettyJSON.String(), nil
-}
-
-// GetTestJSON returns json representation of an interface or sets test error if it fails.
-func GetTestJSON(t *testing.T, data interface{}) string {
-	jsonResp, err := ToJSON(data)
-	if err != nil {
-		t.Errorf("failed to convert data: %+v to json, %s", data, err)
-	}
-
-	return jsonResp
-}
-
 // HandlePanic handles a panic in test code calling testing.T.Fatal() with interface returned by recover().
 func HandlePanic(t *testing.T) {
 	if a := recover(); a != nil {
 		t.Fatalf("%s%s", logging.CallerText(logging.MyCallersCaller), a)
-		debug.PrintStack()
+		t.Fatalf("%s%s\nstack trace... \n%s", logging.CallerText(logging.MyCallersCallersCaller), a, string(debug.Stack()))
 	}
 }
 
@@ -424,4 +353,46 @@ func CallMethod(t *testing.T, obj interface{}, methodName string, params []inter
 	}
 
 	return results
+}
+
+// ContainsStrings checks that all elements in a list of strings are contained in another string
+func ContainsStrings(expected []string, result string) bool {
+	for _, text := range expected {
+		if !strings.Contains(result, text) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// CheckError implements the CheckTestI interface, verifying that a error contains expected text strings.
+// It then calls the default check function to verify other results.
+func CheckError(u TestUtil) bool {
+	defer HandlePanic(u.Testing())
+	t := u.Testing()
+	test := u.TestData()
+
+	expected, ok := test.Expected[len(test.Expected)-1].([]string)
+	if !ok {
+		panic("failed to cast expected to []string")
+	}
+
+	result := test.Results[len(test.Results)-1].(error).Error()
+
+	if !ContainsStrings(expected, result) {
+		t.Fatalf("\nTest: %d, %s, error does not contain expected text\nGot.....: %s\nExpected: %s",
+			test.Number, test.Description, result, expected)
+
+		return false
+	}
+
+	if len(test.Results) > 1 {
+		test.Results = test.Results[0 : len(test.Results)-1]
+		test.Expected = test.Expected[0 : len(test.Expected)-1]
+
+		return DefaultCheckFunc(u)
+	}
+
+	return true
 }
