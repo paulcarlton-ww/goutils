@@ -27,7 +27,7 @@ NC_DIR:=: $(CURDIR)$(NC)
 # Stop prints each line of the recipe.
 .SILENT:
 
-all: lint coverage
+all: gomod-update lint coverage
 clean: clean-lint clean-coverage clean-test clean-gomod
 
 
@@ -101,4 +101,8 @@ go.sum:  ${GOMOD_ARTIFACT}
 
 ${GOMOD_ARTIFACT}: gomod-update
 gomod-update: go.mod ${PROJECT_SOURCES}
-	go build ./...
+	go build ./... && \
+	echo "${YELLOW}go mod tidy${NC}" && \
+	go mod tidy && \
+	echo "${YELLOW}go mod download${NC}" && \
+	go mod download

@@ -355,7 +355,7 @@ func CallMethod(t *testing.T, obj interface{}, methodName string, params []inter
 	return results
 }
 
-// ContainsStrings checks that all elements in a list of strings are contained in another string
+// ContainsStrings checks that all elements in a list of strings are contained in another string.
 func ContainsStrings(expected []string, result string) bool {
 	for _, text := range expected {
 		if !strings.Contains(result, text) {
