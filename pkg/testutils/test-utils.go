@@ -445,3 +445,8 @@ func CompareAsJSON(t *testing.T, one, two interface{}) bool {
 
 	return ToJSON(t, one) == ToJSON(t, two)
 }
+
+// BoolPtr returns a pointer to a bool.
+func BoolPtr(b bool) *bool {
+	return &b
+}
