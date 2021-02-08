@@ -32,8 +32,13 @@ To run the build and test in a docker container, type:
 
     make check
 
-If changes are made to go source imports you may need to perform a go mod vendor, type:
+Each package directory contains a go.mod file so that users can import the desired version of the package. When making changes tag the commit with the next semantic version for that package, e.g.
 
-    make gomod-update
+    git commit -a -m "details of changes"
+    git push
+    git tag pkg/logging/v0.0.0
+    git push --tags
 
+Users of the 'logging' package can then update their go.mod file to reference the new version.
 
+To contribute create a branch and submit a pull request.
