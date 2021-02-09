@@ -36,6 +36,7 @@ func SetObjStatusFields(t *testing.T, objStatus *ObjectStatus, fieldValues map[s
 	if retain {
 		for fieldName, fieldInfo := range objStatus.Fields {
 			newObj.Fields[fieldName] = FieldInfo{
+				Comparer:     fieldInfo.Comparer,
 				GetterMethod: fieldInfo.GetterMethod,
 				SetterMethod: fieldInfo.SetterMethod,
 				FieldValue:   fieldInfo.FieldValue,
@@ -53,6 +54,7 @@ func SetObjStatusFields(t *testing.T, objStatus *ObjectStatus, fieldValues map[s
 		}
 
 		newObj.Fields[fieldName] = FieldInfo{
+			Comparer:     info.Comparer,
 			GetterMethod: info.GetterMethod,
 			SetterMethod: info.SetterMethod,
 			FieldValue:   fieldValue,
@@ -93,10 +95,10 @@ func CheckFieldValue(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 	expected := fieldInfo.FieldValue
 	passed := false
 
-	if fieldInfo.Comparer != nil {
-		passed = fieldInfo.Comparer(t, actual, expected)
-	} else {
+	if fieldInfo.Comparer == nil {
 		passed = GetPointerValue(actual) == GetPointerValue(expected)
+	} else {
+		passed = fieldInfo.Comparer(t, actual, expected)
 	}
 
 	if !passed || u.FailTests() {
@@ -126,10 +128,10 @@ func CheckFieldGetter(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 		expected := fieldInfo.FieldValue
 		passed := false
 
-		if fieldInfo.Comparer != nil {
-			passed = fieldInfo.Comparer(t, actual, expected)
-		} else {
+		if fieldInfo.Comparer == nil {
 			passed = GetPointerValue(actual) == GetPointerValue(expected)
+		} else {
+			passed = fieldInfo.Comparer(t, actual, expected)
 		}
 
 		if !passed || u.FailTests() {
