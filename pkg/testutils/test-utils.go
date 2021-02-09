@@ -13,6 +13,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/paulcarlton-ww/goutils/pkg/logging"
 )
 
@@ -91,7 +92,7 @@ func CheckFieldValue(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 
 	actual := test.ObjStatus.GetField(t, test.ObjStatus.Object, fieldName)
 
-	passed := cmp.Equal(actual, fieldInfo.FieldValue)
+	passed := cmp.Equal(actual, fieldInfo.FieldValue, cmpopts.IgnoreUnexported())
 
 	if !passed || u.FailTests() {
 		t.Errorf("\nTest: %d, %s\nField: %s\nGot.....: %s\nExpected: %s, Diff: %s",
