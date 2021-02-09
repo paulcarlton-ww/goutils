@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
-
+	"github.com/google/go-cmp/cmp"
 	"github.com/paulcarlton-ww/goutils/pkg/logging"
 )
 
@@ -91,11 +91,11 @@ func CheckFieldValue(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 
 	actual := test.ObjStatus.GetField(t, test.ObjStatus.Object, fieldName)
 
-	passed := GetPointerValue(actual) == GetPointerValue(fieldInfo.FieldValue)
+	passed := cmp.Equal(actual, fieldInfo.FieldValue)
 
 	if !passed || u.FailTests() {
-		t.Errorf("\nTest: %d, %s\nField: %s\nGot.....: %s\nExpected: %s",
-			test.Number, test.Description, fieldName, spew.Sdump(actual), spew.Sdump(fieldInfo.FieldValue))
+		t.Errorf("\nTest: %d, %s\nField: %s\nGot.....: %s\nExpected: %s, Diff: %s",
+			test.Number, test.Description, fieldName, spew.Sdump(GetPointerValue(actual)), spew.Sdump(GetPointerValue(fieldInfo.FieldValue)), cmp.Diff(actual, fieldInfo.FieldValue))
 	}
 
 	return passed
@@ -116,11 +116,11 @@ func CheckFieldGetter(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 
 	if len(fieldInfo.GetterMethod) > 0 {
 		results := test.ObjStatus.CallMethod(t, test.ObjStatus.Object, fieldInfo.GetterMethod, []interface{}{})
-		passed := results[0] == fieldInfo.FieldValue
+		passed := GetPointerValue(results[0]) == GetPointerValue(fieldInfo.FieldValue)
 
 		if !passed || u.FailTests() {
 			t.Errorf("\nTest: %d, %s\nField: %s, Getter function: %s\nGot.....: %s\nExpected: %s",
-				test.Number, test.Description, fieldName, fieldInfo.GetterMethod, spew.Sdump(results), spew.Sdump([]interface{}{fieldInfo.FieldValue}))
+				test.Number, test.Description, fieldName, fieldInfo.GetterMethod, spew.Sdump(GetPointerValue(results)), spew.Sdump(GetPointerValue(fieldInfo.FieldValue)))
 		}
 
 		return passed
