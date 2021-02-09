@@ -73,7 +73,7 @@ func GetPointerValue(i interface{}) interface{} {
 		return i
 	}
 
-	return reflect.Indirect(reflect.ValueOf(i))
+	return reflect.Indirect(reflect.ValueOf(i)).Interface()
 }
 
 // CheckFieldValue will check if a field value is equal to the expected value and set the test to failed if not.
@@ -99,7 +99,7 @@ func CheckFieldValue(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 
 	if !passed || u.FailTests() {
 		t.Errorf("\nTest: %d, %s\nField: %s\nGot.....: %s\nExpected: %s",
-			test.Number, test.Description, fieldName, spew.Sdump(actual), spew.Sdump(fieldInfo.FieldValue))
+			test.Number, test.Description, fieldName, spew.Sdump(actual), spew.Sdump(expected))
 	}
 
 	return passed
