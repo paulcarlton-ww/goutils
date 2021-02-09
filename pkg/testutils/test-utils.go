@@ -54,6 +54,7 @@ func SetObjStatusFields(t *testing.T, objStatus *ObjectStatus, fieldValues map[s
 		}
 
 		newObj.Fields[fieldName] = FieldInfo{
+			Comparer:     info.Comparer,
 			GetterMethod: info.GetterMethod,
 			SetterMethod: info.SetterMethod,
 			FieldValue:   fieldValue,
