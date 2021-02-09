@@ -21,9 +21,10 @@ type (
 
 	// FieldInfo holds information about a field of a struct.
 	FieldInfo struct {
-		GetterMethod string      `json:"getter,omitempty"` // The method to get the value, nil if no getter method.
-		SetterMethod string      `json:"setter,omitempty"` // The method to get the value, nil if no setter method.
-		FieldValue   interface{} `json:"value"`            // The value to set or expected value to verify.
+		Comparer     func(t *testing.T, actual, expected interface{}) bool `json:"comparer,omitempty"` // Function to do field specific compare.
+		GetterMethod string                                                `json:"getter,omitempty"`   // The method to get the value, nil if no getter method.
+		SetterMethod string                                                `json:"setter,omitempty"`   // The method to get the value, nil if no setter method.
+		FieldValue   interface{}                                           `json:"value"`              // The value to set or expected value to verify.
 	}
 
 	// Fields is a map of field names to information about the field.
