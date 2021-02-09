@@ -62,6 +62,20 @@ func SetObjStatusFields(t *testing.T, objStatus *ObjectStatus, fieldValues map[s
 	return newObj
 }
 
+// IsPointer returns true if a variable is a pointer.
+func IsPointer(i interface{}) bool {
+	return reflect.ValueOf(i).Type().Kind() == reflect.Ptr
+}
+
+// GetPointerValue returns what a pointer points to.
+func GetPointerValue(i interface{}) interface{} {
+	if !IsPointer(i) {
+		return i
+	}
+
+	return reflect.Indirect(reflect.ValueOf(i))
+}
+
 // CheckFieldValue will check if a field value is equal to the expected value and set the test to failed if not.
 func CheckFieldValue(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 	test := u.TestData()
@@ -76,7 +90,8 @@ func CheckFieldValue(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 	}
 
 	actual := test.ObjStatus.GetField(t, test.ObjStatus.Object, fieldName)
-	passed := actual == fieldInfo.FieldValue
+
+	passed := GetPointerValue(actual) == GetPointerValue(fieldInfo.FieldValue)
 
 	if !passed || u.FailTests() {
 		t.Errorf("\nTest: %d, %s\nField: %s\nGot.....: %s\nExpected: %s",
