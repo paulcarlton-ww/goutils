@@ -91,10 +91,12 @@ func CheckFieldValue(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 
 	actual := test.ObjStatus.GetField(t, test.ObjStatus.Object, fieldName)
 	expected := fieldInfo.FieldValue
-	passed := GetPointerValue(actual) == GetPointerValue(expected)
+	passed := false
 
 	if fieldInfo.Comparer != nil {
 		passed = fieldInfo.Comparer(t, actual, expected)
+	} else {
+		passed = GetPointerValue(actual) == GetPointerValue(expected)
 	}
 
 	if !passed || u.FailTests() {
@@ -122,10 +124,12 @@ func CheckFieldGetter(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 		results := test.ObjStatus.CallMethod(t, test.ObjStatus.Object, fieldInfo.GetterMethod, []interface{}{})
 		actual := results[0]
 		expected := fieldInfo.FieldValue
-		passed := GetPointerValue(actual) == GetPointerValue(expected)
+		passed := false
 
 		if fieldInfo.Comparer != nil {
 			passed = fieldInfo.Comparer(t, actual, expected)
+		} else {
+			passed = GetPointerValue(actual) == GetPointerValue(expected)
 		}
 
 		if !passed || u.FailTests() {
