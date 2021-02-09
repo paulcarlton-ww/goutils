@@ -36,6 +36,7 @@ func SetObjStatusFields(t *testing.T, objStatus *ObjectStatus, fieldValues map[s
 	if retain {
 		for fieldName, fieldInfo := range objStatus.Fields {
 			newObj.Fields[fieldName] = FieldInfo{
+				Comparer:     fieldInfo.Comparer,
 				GetterMethod: fieldInfo.GetterMethod,
 				SetterMethod: fieldInfo.SetterMethod,
 				FieldValue:   fieldInfo.FieldValue,
@@ -89,14 +90,14 @@ func CheckFieldValue(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 		return true
 	}
 
-	comparer := u.Comparer
-	if fieldInfo.Comparer != nil {
-		comparer = fieldInfo.Comparer
-	}
-
 	actual := test.ObjStatus.GetField(t, test.ObjStatus.Object, fieldName)
 
-	passed := cmp.Equal(actual, fieldInfo.FieldValue, cmp.Comparer(comparer))
+	passed := false
+	if fieldInfo.Comparer != nil {
+		passed = cmp.Equal(actual, fieldInfo.FieldValue, cmp.Comparer(fieldInfo.Comparer))
+	} else {
+		passed = cmp.Equal(actual, fieldInfo.FieldValue)
+	}
 
 	if !passed || u.FailTests() {
 		t.Errorf("\nTest: %d, %s\nField: %s\nGot.....: %s\nExpected: %s, Diff: %s",

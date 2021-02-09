@@ -21,7 +21,7 @@ type (
 
 	// FieldInfo holds information about a field of a struct.
 	FieldInfo struct {
-		Comparer     func(a, b interface{}) bool `json:"comparer,omitempty"` // The function to compare this value, defaults to Compare as Json.
+		Comparer     func(a, b interface{}) bool `json:"comparer,omitempty"` // The function to compare this value.
 		GetterMethod string                      `json:"getter,omitempty"`   // The method to get the value, nil if no getter method.
 		SetterMethod string                      `json:"setter,omitempty"`   // The method to get the value, nil if no setter method.
 		FieldValue   interface{}                 `json:"value"`              // The value to set or expected value to verify.
@@ -65,7 +65,6 @@ type (
 		Verbose() bool
 		SetTestData(testData *DefTest)
 		TestData() *DefTest
-		Comparer(a, b interface{}) bool
 	}
 
 	// testUtil is used to hold configuration information for testing.
@@ -95,11 +94,6 @@ func NewTestUtil(t *testing.T, testData *DefTest) TestUtil {
 	}
 
 	return u
-}
-
-// Comparer is the default comparer.
-func (u *testUtil) Comparer(a, b interface{}) bool {
-	return CompareAsJSON(u.t, a, b)
 }
 
 // CallPrepFunc calls the pre test setup function.
