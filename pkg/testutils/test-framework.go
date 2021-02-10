@@ -1,3 +1,4 @@
+// Package testutils provides a framework and helper functions for use during unit testing.
 package testutils
 
 import (
@@ -9,7 +10,7 @@ import (
 type (
 	// PrepTestI defines function to be called before running a test.
 	PrepTestI func(u TestUtil)
-	// CheckTestI definesfunction to be called after test to check result.
+	// CheckTestI defines function to be called after test to check result.
 	CheckTestI func(u TestUtil) bool
 
 	// GetFieldFunc is the function to call to get the value of a field of an object.
@@ -21,15 +22,17 @@ type (
 
 	// FieldInfo holds information about a field of a struct.
 	FieldInfo struct {
-		GetterMethod string      `json:"getter,omitempty"` // The method to get the value, nil if no getter method.
-		SetterMethod string      `json:"setter,omitempty"` // The method to get the value, nil if no setter method.
-		FieldValue   interface{} `json:"value"`            // The value to set or expected value to verify.
+		Comparer     func(t *testing.T, actual, expected interface{}) bool `json:"comparer,omitempty"` // Function to do field specific compare, nil if not set.
+		GetterMethod string                                                `json:"getter,omitempty"`   // The method to get the value, nil if no getter method.
+		SetterMethod string                                                `json:"setter,omitempty"`   // The method to get the value, nil if no setter method.
+		FieldValue   interface{}                                           `json:"value"`              // The value to set or expected value to verify.
 	}
 
 	// Fields is a map of field names to information about the field.
 	Fields map[string]FieldInfo
 
-	// ObjectStatus hold details of the object under test, including the object, the functions to get and set fields and call methods.
+	// ObjectStatus hold details of the object under test.
+	// This can be used to verify the internal state of an object after a test.
 	ObjectStatus struct {
 		Object     interface{}    // The object or interface under test, this needs to be set during test before calling post test actions.
 		GetField   GetFieldFunc   // The function to call to get a field value.
@@ -38,11 +41,11 @@ type (
 		Fields     Fields         // The fields of an object.
 	}
 
-	// DefTest generic tests data structure used by tests.
+	// DefTest generic test data structure.
 	DefTest struct {
 		Number      int           // Test number.
 		Description string        // Test description.
-		Config      interface{}   // Test configuration, to be used by custom preTest Function.
+		Config      interface{}   // Test configuration information to be used by test function or custom pre/post test functions.
 		Inputs      []interface{} // Test inputs.
 		Expected    []interface{} // Test expected results.
 		Results     []interface{} // Test results.
@@ -50,25 +53,25 @@ type (
 		PrepFunc    PrepTestI     // Function to be called before a test.
 		// leave unset to call default - which prints the test number and name.
 		CheckFunc CheckTestI // Function to be called to check a test results.
-		// leave unset to call default - which compares actual and expected as strings.
+		// leave unset to call default - which compares actual results with expected results and verifies object status.
 	}
 
 	// TestUtil the interface used to provide testing utilities.
 	TestUtil interface {
-		CallPrepFunc()       // Call the custom ot defsult test preparation function.
-		CallCheckFunc() bool // Call the custom or default test checking function.
-		Testing() *testing.T
-		SetFailTests(value bool)
-		FailTests() bool
-		SetVerbose(value bool)
-		Verbose() bool
-		SetTestData(testData *DefTest)
-		TestData() *DefTest
+		CallPrepFunc()                 // Call the custom or default test preparation function.
+		CallCheckFunc() bool           // Call the custom or default test checking function.
+		Testing() *testing.T           // testing object.
+		SetFailTests(value bool)       // Set the fail test setting to verify test check reporting.
+		FailTests() bool               // Get the fail test setting.
+		SetVerbose(value bool)         // Set the verbose setting.
+		Verbose() bool                 // Get the verbose setting.
+		SetTestData(testData *DefTest) // Set the test data.
+		TestData() *DefTest            // Get the test data.
 	}
 
 	// testUtil is used to hold configuration information for testing.
 	testUtil struct {
-		TestUtil             // TestUtil interface that operates in this object.
+		TestUtil             // TestUtil interface that operates on this object.
 		t         *testing.T // Testing object.
 		testData  *DefTest   // The definition of this test.
 		failTests bool       // Set to make default test check function reported retrun false to test report function.
@@ -113,30 +116,37 @@ func (u *testUtil) CallCheckFunc() bool {
 	return u.testData.CheckFunc(u)
 }
 
+// Testing returns the testing object.
 func (u *testUtil) Testing() *testing.T {
 	return u.t
 }
 
+// SetVerbose sets the verbose flag.
 func (u *testUtil) SetVerbose(value bool) {
 	u.verbose = value
 }
 
+// Verbose gets the verbose flag.
 func (u *testUtil) Verbose() bool {
 	return u.verbose
 }
 
+// SetFailTests sets the fail tests flag.
 func (u *testUtil) SetFailTests(value bool) {
 	u.failTests = value
 }
 
+// FailTests returns the fail test setting.
 func (u *testUtil) FailTests() bool {
 	return u.failTests
 }
 
+// SetTestData sets the test data.
 func (u *testUtil) SetTestData(testData *DefTest) {
 	u.testData = testData
 }
 
+// TestData returns the test data.
 func (u *testUtil) TestData() *DefTest {
 	return u.testData
 }
@@ -147,7 +157,7 @@ func DefaultPrepFunc(u TestUtil) {
 	u.Testing().Logf("Test: %d, %s\n", test.Number, test.Description)
 }
 
-// DefaultCheckFunc is the default check test function that compares actual and expected as strings.
+// DefaultCheckFunc is the default check test function that compares actual and expected.
 func DefaultCheckFunc(u TestUtil) bool {
 	return CheckCallResultsReflect(u) && CheckObjStatusFunc(u)
 }

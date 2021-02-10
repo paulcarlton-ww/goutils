@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/kylelemons/godebug/diff"
 
 	"github.com/paulcarlton-ww/goutils/pkg/logging"
 )
@@ -36,6 +37,7 @@ func SetObjStatusFields(t *testing.T, objStatus *ObjectStatus, fieldValues map[s
 	if retain {
 		for fieldName, fieldInfo := range objStatus.Fields {
 			newObj.Fields[fieldName] = FieldInfo{
+				Comparer:     fieldInfo.Comparer,
 				GetterMethod: fieldInfo.GetterMethod,
 				SetterMethod: fieldInfo.SetterMethod,
 				FieldValue:   fieldInfo.FieldValue,
@@ -53,6 +55,7 @@ func SetObjStatusFields(t *testing.T, objStatus *ObjectStatus, fieldValues map[s
 		}
 
 		newObj.Fields[fieldName] = FieldInfo{
+			Comparer:     info.Comparer,
 			GetterMethod: info.GetterMethod,
 			SetterMethod: info.SetterMethod,
 			FieldValue:   fieldValue,
@@ -73,7 +76,7 @@ func GetPointerValue(i interface{}) interface{} {
 		return i
 	}
 
-	return reflect.Indirect(reflect.ValueOf(i))
+	return reflect.Indirect(reflect.ValueOf(i)).Interface()
 }
 
 // CheckFieldValue will check if a field value is equal to the expected value and set the test to failed if not.
@@ -90,12 +93,18 @@ func CheckFieldValue(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 	}
 
 	actual := test.ObjStatus.GetField(t, test.ObjStatus.Object, fieldName)
+	expected := fieldInfo.FieldValue
+	passed := false
 
-	passed := GetPointerValue(actual) == GetPointerValue(fieldInfo.FieldValue)
+	if fieldInfo.Comparer == nil {
+		passed = GetPointerValue(actual) == GetPointerValue(expected)
+	} else {
+		passed = fieldInfo.Comparer(t, actual, expected)
+	}
 
 	if !passed || u.FailTests() {
 		t.Errorf("\nTest: %d, %s\nField: %s\nGot.....: %s\nExpected: %s",
-			test.Number, test.Description, fieldName, spew.Sdump(actual), spew.Sdump(fieldInfo.FieldValue))
+			test.Number, test.Description, fieldName, spew.Sdump(actual), spew.Sdump(expected))
 	}
 
 	return passed
@@ -116,7 +125,15 @@ func CheckFieldGetter(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 
 	if len(fieldInfo.GetterMethod) > 0 {
 		results := test.ObjStatus.CallMethod(t, test.ObjStatus.Object, fieldInfo.GetterMethod, []interface{}{})
-		passed := results[0] == fieldInfo.FieldValue
+		actual := results[0]
+		expected := fieldInfo.FieldValue
+		passed := false
+
+		if fieldInfo.Comparer == nil {
+			passed = GetPointerValue(actual) == GetPointerValue(expected)
+		} else {
+			passed = fieldInfo.Comparer(t, actual, expected)
+		}
 
 		if !passed || u.FailTests() {
 			t.Errorf("\nTest: %d, %s\nField: %s, Getter function: %s\nGot.....: %s\nExpected: %s",
@@ -418,8 +435,8 @@ func ReportSpew(u TestUtil) {
 	t := u.Testing()
 	test := u.TestData()
 
-	t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s",
-		test.Number, test.Description, spew.Sdump(test.Inputs), spew.Sdump(test.Results), spew.Sdump(test.Expected))
+	t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s\nDiff....: %s",
+		test.Number, test.Description, spew.Sdump(test.Inputs), spew.Sdump(test.Results), spew.Sdump(test.Expected), diff.Diff(spew.Sdump(test.Results...), spew.Sdump(test.Expected)))
 }
 
 // ReportJSON reports on result differences using json.
@@ -427,8 +444,8 @@ func ReportJSON(u TestUtil) {
 	t := u.Testing()
 	test := u.TestData()
 
-	t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s",
-		test.Number, test.Description, ToJSON(t, test.Inputs), ToJSON(t, test.Results), ToJSON(t, test.Expected))
+	t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s\nDiff....: %s",
+		test.Number, test.Description, ToJSON(t, test.Inputs), ToJSON(t, test.Results), ToJSON(t, test.Expected), diff.Diff(ToJSON(t, test.Results), ToJSON(t, test.Expected)))
 }
 
 // ToJSON is used get an interface in JSON format.
