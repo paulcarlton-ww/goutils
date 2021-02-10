@@ -3,7 +3,6 @@ package testutils
 
 import (
 	"os"
-	"reflect"
 	"testing"
 )
 
@@ -12,6 +11,10 @@ type (
 	PrepTestI func(u TestUtil)
 	// CheckTestI defines function to be called after test to check result.
 	CheckTestI func(u TestUtil) bool
+	// ReportDiffI defines the report difference function interface.
+	ReportDiffI func(u TestUtil, name string, actual, expected interface{})
+	// ComparerI defines the comparer function interface.
+	ComparerI func(u TestUtil, name string, actual, expected interface{}) bool
 
 	// GetFieldFunc is the function to call to get the value of a field of an object.
 	GetFieldFunc func(t *testing.T, obj interface{}, fieldName string) interface{}
@@ -22,10 +25,11 @@ type (
 
 	// FieldInfo holds information about a field of a struct.
 	FieldInfo struct {
-		Comparer     func(t *testing.T, actual, expected interface{}) bool `json:"comparer,omitempty"` // Function to do field specific compare, nil if not set.
-		GetterMethod string                                                `json:"getter,omitempty"`   // The method to get the value, nil if no getter method.
-		SetterMethod string                                                `json:"setter,omitempty"`   // The method to get the value, nil if no setter method.
-		FieldValue   interface{}                                           `json:"value"`              // The value to set or expected value to verify.
+		Reporter     ReportDiffI `json:"reporter,omitempty"` // Function to do field specific reporting of differences, nil if not set.
+		Comparer     ComparerI   `json:"comparer,omitempty"` // Function to do field specific compare, nil if not set.
+		GetterMethod string      `json:"getter,omitempty"`   // The method to get the value, nil if no getter method.
+		SetterMethod string      `json:"setter,omitempty"`   // The method to get the value, nil if no setter method.
+		FieldValue   interface{} `json:"value"`              // The value to set or expected value to verify.
 	}
 
 	// Fields is a map of field names to information about the field.
@@ -50,10 +54,21 @@ type (
 		Expected    []interface{} // Test expected results.
 		Results     []interface{} // Test results.
 		ObjStatus   *ObjectStatus // Details of object under test including field names and expected values, used by CheckFunc to verify values.
-		PrepFunc    PrepTestI     // Function to be called before a test.
-		// leave unset to call default - which prints the test number and name.
-		CheckFunc CheckTestI // Function to be called to check a test results.
-		// leave unset to call default - which compares actual results with expected results and verifies object status.
+		// PrepFunc is function to be called before a test, leave unset to call default - which prints the test number and name.
+		PrepFunc PrepTestI
+		// CheckFunc is function to be called to check a test results, leave unset to call default.
+		// Default compares actual results with expected results and verifies object status.
+		CheckFunc CheckTestI
+		// ResultsCompareFunc is function to be called to compare a test results, leave unset to call default.
+		// Default compares actual results with expected results using reflect.DeepEqual().
+		ResultsCompareFunc ComparerI
+		// ResultsReportFunc is function to be called to report difference in test results, leave unset to call default - which uses spew.Sdump().
+		ResultsReportFunc ReportDiffI
+		// FieldCompareFunc is function to be called to compare a field values, leave unset to call default.
+		// Default compares actual results with expected results using reflect.DeepEqual().
+		FieldCompareFunc ComparerI
+		// FieldCompareFunc is function to be called to report difference in field values, leave unset to call default - which uses spew.Sdump().
+		FieldReportFunc ReportDiffI
 	}
 
 	// TestUtil the interface used to provide testing utilities.
@@ -67,6 +82,14 @@ type (
 		Verbose() bool                 // Get the verbose setting.
 		SetTestData(testData *DefTest) // Set the test data.
 		TestData() *DefTest            // Get the test data.
+		// ResultsComparer calls the specified comparer, default checking function calls this to call test data's CompareFunc or CompareReflectDeepEqual if not set.
+		ResultsComparer() bool
+		// FieldComparer calls the field comparer, default checking function calls this to call test data's CompareFunc or CompareReflectDeepEqual if not set.
+		FieldComparer(name string, actual, expected interface{}) bool
+		// ResultReporter calls the specified reporter, default checking function calls this to call test data's ResultsReportFunc or ReportSpew if not set.
+		ResultsReporter()
+		// FieldReporter calls the specified reporter, default checking function calls this to call test data's ReportFieldsFunc or ReportSpew if not set.
+		FieldReporter(name string, actual, expected interface{})
 	}
 
 	// testUtil is used to hold configuration information for testing.
@@ -157,37 +180,60 @@ func DefaultPrepFunc(u TestUtil) {
 	u.Testing().Logf("Test: %d, %s\n", test.Number, test.Description)
 }
 
+func (u *testUtil) ResultReporter() {
+	test := u.TestData()
+	if test.ResultsReportFunc == nil {
+		ReportCallSpew(u)
+
+		return
+	}
+
+	test.ResultsReportFunc(u, "", test.Results, test.Expected)
+}
+
+func (u *testUtil) FieldReporter(name string, actual, expected interface{}) {
+	test := u.TestData()
+	if test.FieldCompareFunc == nil {
+		ReportSpew(u, name, actual, expected)
+
+		return
+	}
+
+	test.FieldReportFunc(u, name, actual, expected)
+}
+
+func (u *testUtil) ResultsComparer() bool {
+	test := u.TestData()
+	passed := false
+
+	if test.ResultsCompareFunc == nil {
+		passed = CompareReflectDeepEqual(u, "", test.Results, test.Expected)
+	} else {
+		passed = test.ResultsCompareFunc(u, "", test.Results, test.Expected)
+	}
+
+	if !passed || u.FailTests() {
+		u.ResultReporter()
+	}
+
+	return passed
+}
+
+func (u *testUtil) FieldComparer(name string, actual, expected interface{}) bool {
+	test := u.TestData()
+	if test.FieldCompareFunc == nil {
+		return CompareReflectDeepEqual(u, name, actual, expected)
+	}
+
+	return test.FieldCompareFunc(u, name, actual, expected)
+}
+
 // DefaultCheckFunc is the default check test function that compares actual and expected.
 func DefaultCheckFunc(u TestUtil) bool {
-	return CheckCallResultsReflect(u) && CheckObjStatusFunc(u)
+	return u.ResultsComparer() && CheckObjStatusFunc(u)
 }
 
 // CheckObjStatusFunc checks object fields values against expected and report if different.
 func CheckObjStatusFunc(u TestUtil) bool {
 	return CheckFieldsValue(u) && CheckFieldsGetter(u)
-}
-
-// CheckCallResultsReflect uses reflect.DeepEqual tochecks call results against expected and report if different .
-func CheckCallResultsReflect(u TestUtil) bool {
-	test := u.TestData()
-
-	result := reflect.DeepEqual(test.Results, test.Expected)
-	if !result || u.FailTests() {
-		ReportSpew(u)
-	}
-
-	return result
-}
-
-// CheckCallResultsJSON uses json comparison to checks call results against expected and report if different .
-func CheckCallResultsJSON(u TestUtil) bool {
-	test := u.TestData()
-	t := u.Testing()
-
-	result := CompareAsJSON(t, test.Results, test.Expected)
-	if !result || u.FailTests() {
-		ReportJSON(u)
-	}
-
-	return result
 }

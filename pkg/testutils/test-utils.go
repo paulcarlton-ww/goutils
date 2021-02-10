@@ -38,6 +38,7 @@ func SetObjStatusFields(t *testing.T, objStatus *ObjectStatus, fieldValues map[s
 		for fieldName, fieldInfo := range objStatus.Fields {
 			newObj.Fields[fieldName] = FieldInfo{
 				Comparer:     fieldInfo.Comparer,
+				Reporter:     fieldInfo.Reporter,
 				GetterMethod: fieldInfo.GetterMethod,
 				SetterMethod: fieldInfo.SetterMethod,
 				FieldValue:   fieldInfo.FieldValue,
@@ -56,6 +57,7 @@ func SetObjStatusFields(t *testing.T, objStatus *ObjectStatus, fieldValues map[s
 
 		newObj.Fields[fieldName] = FieldInfo{
 			Comparer:     info.Comparer,
+			Reporter:     info.Reporter,
 			GetterMethod: info.GetterMethod,
 			SetterMethod: info.SetterMethod,
 			FieldValue:   fieldValue,
@@ -97,14 +99,13 @@ func CheckFieldValue(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 	passed := false
 
 	if fieldInfo.Comparer == nil {
-		passed = GetPointerValue(actual) == GetPointerValue(expected)
+		passed = u.FieldComparer(fieldName, actual, expected)
 	} else {
-		passed = fieldInfo.Comparer(t, actual, expected)
+		passed = fieldInfo.Comparer(u, fieldName, actual, expected)
 	}
 
 	if !passed || u.FailTests() {
-		t.Errorf("\nTest: %d, %s\nField: %s\nGot.....: %s\nExpected: %s",
-			test.Number, test.Description, fieldName, spew.Sdump(actual), spew.Sdump(expected))
+		u.FieldReporter(fieldName, actual, expected)
 	}
 
 	return passed
@@ -130,14 +131,13 @@ func CheckFieldGetter(u TestUtil, fieldName string, fieldInfo FieldInfo) bool {
 		passed := false
 
 		if fieldInfo.Comparer == nil {
-			passed = GetPointerValue(actual) == GetPointerValue(expected)
+			passed = u.FieldComparer(fieldName, actual, expected)
 		} else {
-			passed = fieldInfo.Comparer(t, actual, expected)
+			passed = fieldInfo.Comparer(u, fieldName, actual, expected)
 		}
 
 		if !passed || u.FailTests() {
-			t.Errorf("\nTest: %d, %s\nField: %s, Getter function: %s\nGot.....: %s\nExpected: %s",
-				test.Number, test.Description, fieldName, fieldInfo.GetterMethod, spew.Sdump(results), spew.Sdump([]interface{}{fieldInfo.FieldValue}))
+			u.FieldReporter(fieldName, actual, expected)
 		}
 
 		return passed
@@ -271,21 +271,6 @@ func SetEnvs(t *testing.T, envSettings map[string]string) {
 	}
 }
 
-// RemoveBottom removes items from caller list including and prior to testing.tRunner().
-func RemoveBottom(callers []string) []string {
-	ourCallers := []string{}
-
-	for _, caller := range callers {
-		if strings.HasPrefix(caller, "testing.tRunner()") {
-			break
-		}
-
-		ourCallers = append(ourCallers, caller)
-	}
-
-	return ourCallers
-}
-
 // ContainsStringArray checks items in two string arrays verifying that the second string array is
 // contained in the first.
 func ContainsStringArray(one, two []string, first bool) bool {
@@ -400,7 +385,7 @@ func ContainsStrings(expected []string, result string) bool {
 }
 
 // CheckError implements the CheckTestI interface, verifying that a error contains expected text strings.
-// It then calls the default check function to verify other results.
+// It then calls the default check function to verify other results, if any.
 func CheckError(u TestUtil) bool {
 	defer HandlePanic(u.Testing())
 	t := u.Testing()
@@ -430,22 +415,92 @@ func CheckError(u TestUtil) bool {
 	return true
 }
 
-// ReportSpew reports on result differences using spew.Sdump.
-func ReportSpew(u TestUtil) {
+// CheckNotNil is passed two interfaces and checks if both or neither are nil.
+// If both are nil it returns true, if neither are nil it returns false.
+// If one is nil and the other is not it reports the difference and returns nil.
+func CheckNotNil(u TestUtil, name string, a, e interface{}) bool {
 	t := u.Testing()
 	test := u.TestData()
 
-	t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s\nDiff....: %s",
-		test.Number, test.Description, spew.Sdump(test.Inputs), spew.Sdump(test.Results), spew.Sdump(test.Expected), diff.Diff(spew.Sdump(test.Results...), spew.Sdump(test.Expected)))
+	if a == nil || e == nil {
+		if a != nil {
+			t.Fatalf("\nTest: %d, %s\nField....: %s\nActual value is nil and expected is not", test.Number, test.Description, name)
+		}
+
+		if e != nil {
+			t.Fatalf("\nTest: %d, %s\nField....: %s\nExpected value is nil and actual is not", test.Number, test.Description, name)
+		}
+
+		return false
+	}
+
+	return true
 }
 
-// ReportJSON reports on result differences using json.
-func ReportJSON(u TestUtil) {
+// CompareReflectDeepEqual compares values using reflect.DeepEqual().
+func CompareReflectDeepEqual(u TestUtil, name string, actual, expected interface{}) bool {
+	return reflect.DeepEqual(actual, expected)
+}
+
+// ReportSpew uses spew to report the differences between two values.
+// It displays the actual and expected values as well as the differences between them.
+func ReportSpew(u TestUtil, name string, actual, expected interface{}) {
 	t := u.Testing()
 	test := u.TestData()
 
+	spewActual := spew.Sdump(actual)
+	spewExpected := spew.Sdump(expected)
+
+	if len(name) == 0 {
+		ReportCallSpew(u)
+
+		return
+	}
+
+	t.Errorf("\nTest: %d, %s\nField....: %s\nGot.....: %s\nExpected: %s\nDiff....: %s",
+		test.Number, test.Description, name, spewActual, spewExpected, diff.Diff(spewActual, spewExpected))
+}
+
+// ReportCallSpew uses spew to report on result of a function or method call.
+// It displays the input, result and expected result as well as the differences between the actual and expected results.
+func ReportCallSpew(u TestUtil) {
+	t := u.Testing()
+	test := u.TestData()
+	spewActual := spew.Sdump(test.Results)
+	spewExpected := spew.Sdump(test.Expected)
+
 	t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s\nDiff....: %s",
-		test.Number, test.Description, ToJSON(t, test.Inputs), ToJSON(t, test.Results), ToJSON(t, test.Expected), diff.Diff(ToJSON(t, test.Results), ToJSON(t, test.Expected)))
+		test.Number, test.Description, spew.Sdump(test.Inputs), spewActual, spewExpected, diff.Diff(spewActual, spewExpected))
+}
+
+// ReportJSON uses json to report the differences between two values.
+// It displays the actual and expected values as well as the differences between them.
+func ReportJSON(u TestUtil, name string, actual, expected interface{}) {
+	t := u.Testing()
+	test := u.TestData()
+	jsonActual := ToJSON(t, actual)
+	jsonExpected := ToJSON(t, expected)
+
+	if len(name) == 0 {
+		ReportCallJSON(u)
+
+		return
+	}
+
+	t.Errorf("\nTest: %d, %s\nField....: %s\nGot.....: %s\nExpected: %s\nDiff....: %s",
+		test.Number, test.Description, name, jsonActual, jsonExpected, diff.Diff(jsonActual, jsonExpected))
+}
+
+// ReportCallJSON uses json to report on result of a function or method call.
+// It displays the input, result and expected result as well as the differences between the actual and expected results.
+func ReportCallJSON(u TestUtil) {
+	t := u.Testing()
+	test := u.TestData()
+	jsonActual := ToJSON(t, test.Results)
+	jsonExpected := ToJSON(t, test.Expected)
+
+	t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s\nDiff....: %s",
+		test.Number, test.Description, ToJSON(t, test.Inputs), jsonActual, jsonExpected, diff.Diff(jsonActual, jsonExpected))
 }
 
 // ToJSON is used get an interface in JSON format.
