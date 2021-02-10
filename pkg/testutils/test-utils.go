@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/kylelemons/godebug/diff"
 
 	"github.com/paulcarlton-ww/goutils/pkg/logging"
 )
@@ -434,8 +435,8 @@ func ReportSpew(u TestUtil) {
 	t := u.Testing()
 	test := u.TestData()
 
-	t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s",
-		test.Number, test.Description, spew.Sdump(test.Inputs), spew.Sdump(test.Results), spew.Sdump(test.Expected))
+	t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s\nDiff....: %s",
+		test.Number, test.Description, spew.Sdump(test.Inputs), spew.Sdump(test.Results), spew.Sdump(test.Expected), diff.Diff(spew.Sdump(test.Results...), spew.Sdump(test.Expected)))
 }
 
 // ReportJSON reports on result differences using json.
@@ -443,8 +444,8 @@ func ReportJSON(u TestUtil) {
 	t := u.Testing()
 	test := u.TestData()
 
-	t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s",
-		test.Number, test.Description, ToJSON(t, test.Inputs), ToJSON(t, test.Results), ToJSON(t, test.Expected))
+	t.Errorf("\nTest: %d, %s\nInput...: %s\nGot.....: %s\nExpected: %s\nDiff....: %s",
+		test.Number, test.Description, ToJSON(t, test.Inputs), ToJSON(t, test.Results), ToJSON(t, test.Expected), diff.Diff(ToJSON(t, test.Results), ToJSON(t, test.Expected)))
 }
 
 // ToJSON is used get an interface in JSON format.
