@@ -49,6 +49,7 @@ type (
 	DefTest struct {
 		Number      int           // Test number.
 		Description string        // Test description.
+		EnvVars     []string      // List of environmental variable to be reset at the start of each test
 		Config      interface{}   // Test configuration information to be used by test function or custom pre/post test functions.
 		Inputs      []interface{} // Test inputs.
 		Expected    []interface{} // Test expected results.
@@ -176,8 +177,10 @@ func (u *testUtil) TestData() *DefTest {
 
 // DefaultPrepFunc is the default pre test function that prints the test number and name.
 func DefaultPrepFunc(u TestUtil) {
+	t := u.Testing()
 	test := u.TestData()
-	u.Testing().Logf("Test: %d, %s\n", test.Number, test.Description)
+	UnsetEnvs(t, test.EnvVars)
+	t.Logf("Test: %d, %s\n", test.Number, test.Description)
 }
 
 func (u *testUtil) ResultReporter() {
