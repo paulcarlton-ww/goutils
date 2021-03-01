@@ -437,6 +437,11 @@ func CheckNotNil(u TestUtil, name string, a, e interface{}) bool {
 	return true
 }
 
+// CompareJSON compares values by converting to json.
+func CompareJSON(u TestUtil, name string, actual, expected interface{}) bool {
+	return CompareAsJSON(u.Testing(), actual, expected)
+}
+
 // CompareReflectDeepEqual compares values using reflect.DeepEqual().
 func CompareReflectDeepEqual(u TestUtil, name string, actual, expected interface{}) bool {
 	return reflect.DeepEqual(actual, expected)
