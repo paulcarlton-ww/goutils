@@ -12,6 +12,7 @@ require (
 )
 
 replace (
+	github.com/paulcarlton-ww/goutils/pkg/kubectl => ../kubectl
 	github.com/paulcarlton-ww/goutils/pkg/mocks/kubectl => ../mocks/kubectl
 	github.com/paulcarlton-ww/goutils/pkg/mocks/logr => ../mocks/logr
 )

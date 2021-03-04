@@ -1,6 +1,6 @@
 module github.com/paulcarlton-ww/goutils/pkg/mocks/kubectl
 
-go 1.15
+go 1.13
 
 require (
 	github.com/go-logr/logr v0.4.0
