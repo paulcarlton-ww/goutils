@@ -7,6 +7,4 @@ require (
 	github.com/golang/mock v1.5.0
 )
 
-replace (
-	github.com/paulcarlton-ww/goutils/pkg/kubectl => ../../kubectl
-)
+replace github.com/paulcarlton-ww/goutils/pkg/kubectl => ../../kubectl

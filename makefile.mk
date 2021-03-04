@@ -101,6 +101,7 @@ go.sum:  ${GOMOD_ARTIFACT}
 
 ${GOMOD_ARTIFACT}: gomod-update
 gomod-update: go.mod ${PROJECT_SOURCES}
+	echo "${YELLOW}go build $(CURDIR) ${NC}" && \
 	go build ./... && \
 	echo "${YELLOW}go mod tidy${NC}" && \
 	go mod tidy && \
