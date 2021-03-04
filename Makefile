@@ -44,7 +44,7 @@ NC:=\033[0m
 # Allow secondary expansion of explicit rules.
 .SECONDEXPANSION: %.md %-docker.tar
 
-all: ${PROJECT}-check # go-generate
+all: ${PROJECT}-check go-generate
 clean: clean-gomod clean-${PROJECT}-check \
 	clean-check clean-${BUILD_DIR}
 
