@@ -84,10 +84,11 @@ ${LINT_ARTIFACT}: ${MAKEFILE_PATH}/golangci-lint.yml ${GO_SOURCES}
 		 sysctl -n hw.ncpu || \
 		 echo 1) 2>/dev/null) '*' 2 '-' 1) && \
 	GOPROXY=https://proxy.golang.org,direct \
-	 golangci-lint run \
+	golangci-lint run \
 		--config ${MAKEFILE_PATH}/golangci-lint.yml \
 		--concurrency=$${procs} \
-		*.go) && \
+		--path-prefix "$$(realpath --relative-to ${MAKEFILE_PATH} ${CURDIR})/." \
+		.) && \
 	touch $@ && \
 	cd ${MAKEFILE_PATH}
 
@@ -101,6 +102,7 @@ go.sum:  ${GOMOD_ARTIFACT}
 
 ${GOMOD_ARTIFACT}: gomod-update
 gomod-update: go.mod ${PROJECT_SOURCES}
+	echo "${YELLOW}go build $(CURDIR) ${NC}" && \
 	go build ./... && \
 	echo "${YELLOW}go mod tidy${NC}" && \
 	go mod tidy && \
