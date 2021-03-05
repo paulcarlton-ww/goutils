@@ -65,7 +65,7 @@ const (
 	tempDir       = "/tmp/temp-dir"
 )
 
-func TestNewKubectl(t *testing.T) {
+func TestNewKubectl(t *testing.T) { // nolint: dupl // ok
 	s := setupApply(t).expectKubectlFound()
 	logger := testlogr.TestLogger{T: t}
 
@@ -106,7 +106,7 @@ func TestNewKubectl(t *testing.T) {
 	t.Logf("kubectl full path: %s", kubectl.GetFactoryPath(*f))
 }
 
-func TestNewKustomize(t *testing.T) {
+func TestNewKustomize(t *testing.T) { // nolint: dupl // ok
 	s := setupApply(t).expectKustomizeFound()
 	logger := testlogr.TestLogger{T: t}
 
@@ -517,7 +517,7 @@ func (s *Setup) expectRunError() *Setup {
 	return s
 }
 
-func (s *Setup) expectRunLogsKubectlCommand() *Setup {
+func (s *Setup) expectRunLogsKubectlCommand() *Setup { // nolint: dupl // ok
 	s.expectRun()
 	// The ApplyCommand should use the factory's mockLogger to log a log-leveled message indicating that kubectl was executed with the expected command
 	s.mockLogr.EXPECT().V(gomock.Any()).Return(s.mockLogr).Times(7)
@@ -532,7 +532,7 @@ func (s *Setup) expectRunLogsKubectlCommand() *Setup {
 	return s
 }
 
-func (s *Setup) expectDryRunLogsKubectlCommand() *Setup {
+func (s *Setup) expectDryRunLogsKubectlCommand() *Setup { // nolint: dupl // ok
 	s.expectDryRun()
 	// The ApplyCommand should use the factory's mockLogger to log a log-leveled message indicating that kubectl was executed with the expected command
 	s.mockLogr.EXPECT().V(gomock.Any()).Return(s.mockLogr).Times(7)
