@@ -57,12 +57,14 @@ type Kustomize interface {
 // NewKubectl returns a Kubectl object for creating and running kubectl sub-commands.
 func NewKubectl(logger logr.Logger) (kubectl Kubectl, err error) {
 	execProvider := newExecProviderFunc()
+
 	return newCommandFactory(logger, execProvider, kubectlCmd)
 }
 
 // NewKustomize returns a Kustomize object for creating and running Kustomize sub-commands.
 func NewKustomize(logger logr.Logger) (kustomize Kustomize, err error) {
 	execProvider := newExecProviderFunc()
+
 	return newCommandFactory(logger, execProvider, kustomizeCmd)
 }
 
@@ -175,6 +177,7 @@ func createTempDir() (buildDir string, err error) {
 	if err != nil {
 		return "", errors.WithMessagef(err, "%s - failed to create temporary directory", logging.CallerStr(logging.Me))
 	}
+
 	return buildDir, nil
 }
 
@@ -186,6 +189,7 @@ func (c *abstractCommand) Build() (buildDir string) {
 	buildDir, err = tempDirProviderFunc()
 	if err != nil {
 		c.logError(err) // nolint:errcheck //ok
+
 		return buildDir
 	}
 	c.args = append(c.args, "-o", buildDir)
@@ -200,6 +204,7 @@ func (c *abstractCommand) Build() (buildDir string) {
 // DryRun executes the Kubectl command as a dry run and returns the output without making any changes to the cluster.
 func (c *abstractCommand) DryRun() (output []byte, err error) {
 	c.args = append(c.args, "--server-dry-run")
+
 	return c.Run()
 }
 
@@ -227,6 +232,7 @@ func (f *CommandFactory) kustomizationBuiler(path string, log logr.Logger) strin
 	kustomize, err := NewKustomize(log)
 	if err != nil {
 		log.Error(err, "failed to create kustomize command object", logging.GetFunctionAndSource(logging.MyCaller)...)
+
 		return path
 	}
 	return kustomize.Build(path).Build()
@@ -312,5 +318,6 @@ func (f *CommandFactory) Get(args ...string) (c Command) {
 			args:       args,
 		},
 	}
+
 	return c
 }

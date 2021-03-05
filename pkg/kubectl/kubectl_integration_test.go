@@ -2,6 +2,23 @@
 
 package kubectl_test
 
+// Copied from Kraan - https://github.com/fidelity/kraan
+/*
+	Copyright 2020 The Kraan contributors.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+		http://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 /*
 
 The mockgen tool generates the MockExecProvider type defined in the kubectl/mockExecProvider.go code file.
@@ -33,6 +50,7 @@ func TestRealKubectlBinaryInstalled(t *testing.T) {
 	logger := testlogr.TestLogger{T: t}
 	k, err := kubectl.NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
+
 	if err != nil {
 		t.Errorf("Error from NewKubectl constructor function: %w", err)
 	} else {
@@ -49,6 +67,7 @@ func TestRealOtherBinaryNotInstalled(t *testing.T) {
 	logger := testlogr.TestLogger{T: t}
 	k, err := kubectl.NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
+
 	if err == nil {
 		foundCmdMsg := fmt.Sprintf("Found '%s' binary at '%s'", kubectl.KubectlCmd, kubectl.GetFactoryPath(*k.(*kubectl.CommandFactory)))
 		t.Errorf("Expected error 'executable file not found' was not returned from NewKubectl constructor: %s", foundCmdMsg)
@@ -61,30 +80,36 @@ func TestSimpleApply(t *testing.T) {
 	logger := testlogr.TestLogger{T: t}
 	k, err := kubectl.NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
+
 	if err != nil {
 		t.Fatalf("Error from NewKubectl constructor function: %s", err)
 	}
+
 	out, err := k.Apply("testdata/apply/simpleapply").Run()
 	if err != nil {
 		t.Fatalf("Error from Kubectl Apply.Run function: %s", err)
 	}
+
 	t.Logf("Output: %s", out)
 
 	out, err = k.Get("namespace", "simple", "-o", "yaml").Run()
 	if err != nil {
 		t.Fatalf("Error from Kubectl Get.Run function: %s", err)
 	}
+
 	t.Logf("Output: %s", out)
 
 	out, err = k.Delete("-f", "testdata/apply/simpleapply").Run()
 	if err != nil {
 		t.Fatalf("Error from Kubectl Delete.Run function: %s", err)
 	}
+
 	t.Logf("Output: %s", out)
 
 	out, err = k.Get("namespace", "simple", "-o", "yaml").Run()
 	if err == nil {
 		t.Fatalf("Kubectl Delete.Run function failed to delete the test resource")
 	}
+
 	t.Logf("Output: %s", out)
 }
