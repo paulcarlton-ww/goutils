@@ -59,8 +59,8 @@ clean-${PROJECT}-check:
 		$(MAKE) -C ${target} --makefile=${CURDIR}/makefile.mk clean;)
 
 ${PROJECT}-check: ${GO_CHECK_PACKAGES}
-${GO_CHECK_PACKAGES}: 
-	$(MAKE) -C $@ --makefile=${CURDIR}/makefile.mk
+	$(foreach target,${GO_CHECK_PACKAGES},
+		$(MAKE) -C ${target} --makefile=${CURDIR}/makefile.mk;)
 
 clean-gomod:
 	$(foreach target,${GO_CHECK_PACKAGES},
@@ -75,8 +75,9 @@ gomod:
 		$(MAKE) -C ${target} --makefile=${CURDIR}/makefile.mk gomod;)
 
 # Generate code
-go-generate: ${PROJECT_SOURCES}
-	go generate ./...
+go-generate: ${GO_CHECK_PACKAGES}
+	$(foreach target,${GO_CHECK_PACKAGES},
+		$(MAKE) -C ${target} --makefile=${CURDIR}/makefile.mk go-generate;)
 
 clean-${PROJECT}-build:
 	rm -f ${GO_BIN_ARTIFACT}

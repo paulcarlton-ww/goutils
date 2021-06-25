@@ -22,12 +22,12 @@ NC:=\033[0m
 NC_DIR:=: $(CURDIR)$(NC)
 
 .PHONY: all clean goimports gofumpt gofmt clean-lint lint clean-test test \
-	clean-gomod gomod gomod-update \
+	clean-gomod gomod gomod-update go-generate \
 	clean-coverage coverage
 # Stop prints each line of the recipe.
 .SILENT:
 
-all: gomod-update lint coverage
+all: gomod-update lint coverage go-generate
 clean: clean-lint clean-coverage clean-test clean-gomod
 
 
@@ -94,6 +94,9 @@ ${LINT_ARTIFACT}: ${MAKEFILE_PATH}/golangci-lint.yml ${GO_SOURCES}
 
 go.mod:
 	go mod tidy
+
+go-generate:
+	go generate ./...
 
 gomod: go.sum
 go.sum:  ${GOMOD_ARTIFACT}
