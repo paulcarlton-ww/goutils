@@ -2,117 +2,178 @@ package httpclient
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-)
-
-var (
-	tr *http.Transport //
+	"github.com/go-logr/logr"
 )
 
 const (
-	Post   = "POST"
-	Delete = "DELETE"
-	Get    = "GET"
+	oneHundred = 100
+	thirty     = 30
+	ten        = 10
+	one        = 1
 )
 
-func init() {
+var (
+	ErrorInvalidURL         = errors.New("url is invalid")
+	ErrorReadingRespBody    = errors.New("error reading response body")
+	ErrorRequestFailed      = errors.New("error making request")
+	ErrorRequestBodyInvalid = errors.New("failed to convert request body data to JSON")
+
+	tr             *http.Transport // nolint:gochecknoglobals // ok
+	DefaultTimeout time.Duration   // nolint:gochecknoglobals // ok
+	Post           = "POST"        // nolint:gochecknoglobals // ok
+	Delete         = "DELETE"      // nolint:gochecknoglobals // ok
+	Get            = "GET"         // nolint:gochecknoglobals // ok
+)
+
+func readingResponseBodyError(msg string) error {
+	return fmt.Errorf("%w: %s", ErrorReadingRespBody, msg)
+}
+
+func requestError(msg string) error {
+	return fmt.Errorf("%w: %s", ErrorRequestFailed, msg)
+}
+
+func requestBodyError(msg string) error {
+	return fmt.Errorf("%w: %s", ErrorRequestBodyInvalid, msg)
+}
+
+func init() { // nolint:gochecknoinits // ok
 	tr = &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		MaxIdleConns:        100,
-		MaxIdleConnsPerHost: 100}
+		Proxy:               http.ProxyFromEnvironment,
+		MaxIdleConns:        oneHundred,
+		MaxIdleConnsPerHost: oneHundred,
+	}
+
+	DefaultTimeout = time.Second * thirty
 }
 
 // Header is a type used to store header field name/value pairs when sending HTTPS requests.
 type Header map[string]string
 
-// Params is a type used to store parameter name/value pairs when sending HTTPS requests.
-type Params map[string]string
-
-// ReqResp hold information relating to an HTTPS request and response.
-type ReqResp struct {
-	Cli          *http.Client
-	Params       Params
-	Method       string
-	URLAddr      string
-	Operation    string
-	Timeout      int
-	reqParams    string
-	Body         interface{}
-	ContentType  string
-	Resp         *http.Response
-	RespText     string
-	HeaderFields Header
+// reqResp hold information relating to an HTTPS request and response.
+type reqResp struct {
+	ReqResp
+	ctx          context.Context
+	logger       logr.Logger
+	client       *http.Client
+	transport    *http.Transport
+	url          *url.URL
+	method       *string
+	timeout      *time.Duration
+	body         interface{}
+	resp         *http.Response
+	respText     *string
+	headerFields Header
 }
 
-// ReqResp Methods
+type ReqResp interface {
+	HTTPreq() error
+	getRespBody() error
+	CloseBody()
+	RespBody() string
+	ResponseCode() int
+}
 
-// CloseBody closes the response body
-func (r *ReqResp) CloseBody() {
-	if r.Resp != nil {
-		if r.Resp.Body != nil {
-			e := r.Resp.Body.Close()
+func NewReqResp(ctx context.Context, url *url.URL, method *string, body interface{}, header Header,
+	timeout *time.Duration, logger logr.Logger, client *http.Client, transport http.RoundTripper) (ReqResp, error) {
+	if url == nil {
+		return nil, ErrorInvalidURL
+	}
+	/*
+		if logger == nil {
+			logger = logging.NewLogger("ReqResp", &uzap.Options{})
+		}
+	*/
+	if transport == nil {
+		transport = tr
+	}
+
+	if client == nil {
+		client = &http.Client{Transport: transport}
+	}
+
+	if header == nil {
+		header = make(Header)
+	}
+
+	if method == nil {
+		method = &Get
+	}
+
+	if timeout == nil {
+		timeout = &DefaultTimeout
+	}
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	r := reqResp{
+		ctx:          ctx,
+		logger:       logger,
+		transport:    tr,
+		client:       client,
+		url:          url,
+		method:       method,
+		timeout:      timeout,
+		body:         body,
+		headerFields: header,
+		respText:     nil,
+	}
+
+	return &r, nil
+}
+
+// reqResp Methods
+
+// CloseBody closes the response body.
+func (r *reqResp) CloseBody() {
+	if r.resp != nil {
+		if r.resp.Body != nil {
+			e := r.resp.Body.Close()
 			if e != nil {
-				log.Warnf("failed to close response body: %s", e.Error())
+				r.logger.Error(e, "failed to close response body")
 			}
 		}
 	}
 }
 
-// HTTPreq creates an HTTP client and sends a request. The response is held in ReqResp.RespText
-func (r *ReqResp) HTTPreq() error { // nolint gocyclo
+// HTTPreq creates an HTTP client and sends a request. The response is held in reqResp.RespText.
+func (r *reqResp) HTTPreq() error { // nolint:funlen,gocognit,gocyclo // ok
 	var err error
 
-	if len(r.Method) == 0 {
-		r.Method = "GET"
-	}
-	if len(r.Operation) == 0 {
-		return fmt.Errorf("operation is required")
-	}
-	for k, v := range r.Params {
-		if len(v) > 0 {
-			r.reqParams += fmt.Sprintf("%s=%s&", k, v)
-		}
-	}
+	r.client.Timeout = *r.timeout
 
-	httpProto := "http"
-
-	if r.Timeout == 0 {
-		r.Timeout = 30
-	}
-	timeout := time.Duration(int64(time.Second) * int64(r.Timeout))
-
-	r.Cli = &http.Client{Transport: tr}
-	r.Cli.Timeout = timeout
-
-	req := fmt.Sprintf("%s://%s/%s", httpProto, r.URLAddr, r.Operation)
-	if len(r.reqParams) > 0 {
-		req += fmt.Sprintf("?%s", r.reqParams)
-	}
-	log.Debugf("Request: %s %s", r.Method, req)
+	// r.logger.V(logging.TraceLevel).Info("Request", "method", r.method, "url", r.url) //.
 
 	var inputJSON io.ReadCloser
-	if r.Method == Post {
-		jsonBytes, e := json.Marshal(r.Body)
+
+	if *r.method == Post {
+		jsonBytes, e := json.Marshal(r.body)
 		if e != nil {
-			return fmt.Errorf("failed to convert request body data to JSON, %s", err)
+			return requestBodyError(e.Error())
 		}
+
 		inputJSON = ioutil.NopCloser(bytes.NewReader(jsonBytes))
 	}
 
-	httpReq, err := http.NewRequest(r.Method, req, inputJSON)
+	httpReq, err := http.NewRequestWithContext(r.ctx, *r.method, r.url.String(), inputJSON)
 	if err != nil {
-		return fmt.Errorf("failed to build request, %s", err)
+		return readingResponseBodyError(err.Error())
 	}
 
-	for k, v := range r.HeaderFields {
+	for k, v := range r.headerFields {
 		if len(v) > 0 {
 			httpReq.Header.Set(k, v)
 		}
@@ -121,9 +182,10 @@ func (r *ReqResp) HTTPreq() error { // nolint gocyclo
 	retries := 30
 	seconds := 1
 	start := time.Now()
+
 	for {
-		r.Resp, err = r.Cli.Do(httpReq) // nolint bodyclose
-		if err != nil {
+		r.resp, err = r.client.Do(httpReq) // nolint:bodyclose // ok
+		if err != nil {                    // nolint:nestif // ok
 			if strings.Contains(err.Error(), "connection refused") ||
 				strings.Contains(err.Error(), "http2: no cached connection was available") ||
 				strings.Contains(err.Error(), "net/http: TLS handshake timeout") ||
@@ -131,36 +193,67 @@ func (r *ReqResp) HTTPreq() error { // nolint gocyclo
 				strings.Contains(err.Error(), "unexpected EOF") ||
 				strings.Contains(err.Error(), "Client.Timeout exceeded while awaiting headers") {
 				time.Sleep(time.Second * time.Duration(int64(seconds)))
+
 				retries--
+
 				seconds += seconds
-				if seconds > 10 {
-					seconds = 2
+
+				if seconds > ten {
+					seconds = one
 				}
-				if retries > 0 || time.Since(start) > timeout {
-					log.Warnf("server failed to respond to %s", r.Operation)
+
+				if retries > 0 || time.Since(start) > *r.timeout {
+					r.logger.Error(err, "server failed to respond", "url", r.url)
+
 					continue
 				}
 			}
+
 			return err
 		}
-		if err := r.GetRespBody(); err != nil {
+
+		if err := r.getRespBody(); err != nil {
 			return err
 		}
-		if r.Resp.StatusCode == 200 || (r.Resp.StatusCode == 201 && r.Method == Post) ||
-			(r.Resp.StatusCode == 204 && r.Method == Delete) {
+
+		if r.resp.StatusCode == 200 || (r.resp.StatusCode == 201 && *r.method == Post) ||
+			(r.resp.StatusCode == 204 && *r.method == Delete) {
 			return nil
 		}
-		return fmt.Errorf("failed: %s, %s", r.Resp.Status, r.RespText)
+
+		return requestError(fmt.Sprintf("failed: %s %s", r.resp.Status, r.RespBody()))
 	}
 }
 
-// GetRespBody is used to return the HTTPS response body as a string.
-func (r *ReqResp) GetRespBody() error {
-	defer r.Resp.Body.Close()
-	data, err := ioutil.ReadAll(r.Resp.Body)
+// getRespBody is used to obtain the response body as a string.
+func (r *reqResp) getRespBody() error {
+	defer r.resp.Body.Close()
+
+	data, err := ioutil.ReadAll(r.resp.Body)
 	if err != nil {
-		return fmt.Errorf("error reading resp: %s", err)
+		return readingResponseBodyError(err.Error())
 	}
-	r.RespText = string(data)
+
+	strData := string(data)
+	r.respText = &strData
+
 	return nil
+}
+
+// RespBody is used to return the response body as a string.
+func (r *reqResp) RespBody() string {
+	if r.respText == nil {
+		if err := r.getRespBody(); err != nil {
+			r.logger.Error(err, "failed to retrieve response body")
+
+			return ""
+		}
+	}
+
+	return *r.respText
+}
+
+// RespCode is used to return the response code.
+func (r *reqResp) RespCode() int {
+	return r.resp.StatusCode
 }

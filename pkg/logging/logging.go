@@ -6,12 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 
 	"github.com/go-logr/logr"
+	uzap "go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 const (
@@ -24,9 +29,32 @@ const (
 	// MyCallersCallersCaller is the setting for the function that called the function that called the function that called the function calling MyCaller.
 	MyCallersCallersCaller = 6
 	four                   = 4
+	traceLevelEnvVar       = "TRACE_LEVEL"
 )
 
+var TraceLevel = four // nolint:gochecknoglobals //ok
+
 var errNotAvailable = errors.New("caller not availalble")
+
+func init() { // nolint:gochecknoinits //ok
+	if tlevel, ok := os.LookupEnv(traceLevelEnvVar); ok {
+		var err error
+		if TraceLevel, err = strconv.Atoi(tlevel); err != nil {
+			fmt.Fprintf(os.Stderr, "invalid 'TRACE_LEVEL' value: %s", tlevel)
+
+			TraceLevel = four
+		}
+	}
+}
+
+// NewLogger returns a logger configured the timestamps format is ISO8601.
+func NewLogger(name string, logOpts *zap.Options) logr.Logger {
+	encCfg := uzap.NewProductionEncoderConfig()
+	encCfg.EncodeTime = zapcore.ISO8601TimeEncoder
+	encoder := zap.Encoder(zapcore.NewJSONEncoder(encCfg))
+
+	return zap.New(zap.UseFlagOptions(logOpts), encoder).WithName(name)
+}
 
 // LogJSON is used log an item in JSON format.
 func LogJSON(data interface{}) string {
@@ -157,13 +185,13 @@ func CallerStr(skip uint) string {
 // TraceCall traces calls and exit for functions.
 func TraceCall(log logr.Logger) {
 	callerInfo := GetCaller(MyCaller, true)
-	log.V(four).Info("Entering function", "function", callerInfo.FunctionName, "source", callerInfo.SourceFile, "line", callerInfo.SourceLine)
+	log.V(TraceLevel).Info("Entering function", "function", callerInfo.FunctionName, "source", callerInfo.SourceFile, "line", callerInfo.SourceLine)
 }
 
 // TraceExit traces calls and exit for functions.
 func TraceExit(log logr.Logger) {
 	callerInfo := GetCaller(MyCaller, true)
-	log.V(four).Info("Exiting function", "function", callerInfo.FunctionName, "source", callerInfo.SourceFile, "line", callerInfo.SourceLine)
+	log.V(TraceLevel).Info("Exiting function", "function", callerInfo.FunctionName, "source", callerInfo.SourceFile, "line", callerInfo.SourceLine)
 }
 
 // GetFunctionAndSource gets function name and source line for logging.
