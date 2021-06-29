@@ -14,6 +14,9 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	"github.com/paulcarlton-ww/goutils/pkg/logging"
 )
 
 const (
@@ -65,7 +68,7 @@ type Header map[string]string
 type reqResp struct {
 	ReqResp
 	ctx          context.Context
-	logger       logr.Logger
+	logggiter       logr.Logger
 	client       *http.Client
 	transport    *http.Transport
 	url          *url.URL
@@ -90,11 +93,11 @@ func NewReqResp(ctx context.Context, url *url.URL, method *string, body interfac
 	if url == nil {
 		return nil, ErrorInvalidURL
 	}
-	/*
-		if logger == nil {
-			logger = logging.NewLogger("ReqResp", &uzap.Options{})
-		}
-	*/
+
+	if logger == nil {
+		logger = logging.NewLogger("httpClient", &zap.Options{})
+	}
+
 	if transport == nil {
 		transport = tr
 	}
