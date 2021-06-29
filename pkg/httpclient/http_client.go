@@ -68,7 +68,7 @@ type Header map[string]string
 type reqResp struct {
 	ReqResp
 	ctx          context.Context
-	logggiter       logr.Logger
+	logger       logr.Logger
 	client       *http.Client
 	transport    *http.Transport
 	url          *url.URL
